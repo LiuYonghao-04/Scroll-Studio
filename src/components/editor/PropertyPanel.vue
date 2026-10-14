@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import {
   SlidersHorizontal,
   Sparkles,
@@ -10,10 +10,11 @@ import {
   Trash2,
 } from '@lucide/vue'
 import { useEditorStore } from '../../stores/editor'
-import type { AnimationConfig, NodeStyle } from '../../types/editor'
+import type { NodeStyle } from '../../types/editor'
+import MotionPanel from './MotionPanel.vue'
 const store = useEditorStore()
 const node = computed(() => store.selected)
-const tab = ref<'style' | 'motion'>('style')
+
 const numericStyles: {
   key: 'fontSize' | 'padding' | 'margin' | 'radius' | 'gap'
   label: string
@@ -24,21 +25,6 @@ const numericStyles: {
   { key: 'margin', label: '外边距', min: 0 },
   { key: 'radius', label: '圆角', min: 0 },
   { key: 'gap', label: '组件间距', min: 0 },
-]
-const motionFields: {
-  key: 'x' | 'y' | 'scale' | 'rotation' | 'opacity' | 'duration' | 'trigger'
-  label: string
-  min: number
-  max: number
-  step: number
-}[] = [
-  { key: 'y', label: '起始 Y · px', min: -500, max: 500, step: 1 },
-  { key: 'x', label: '起始 X · px', min: -500, max: 500, step: 1 },
-  { key: 'scale', label: '起始缩放', min: 0.1, max: 3, step: 0.1 },
-  { key: 'rotation', label: '起始旋转 · °', min: -180, max: 180, step: 1 },
-  { key: 'opacity', label: '起始透明度', min: 0, max: 1, step: 0.1 },
-  { key: 'duration', label: '时长 · s', min: 0.1, max: 5, step: 0.1 },
-  { key: 'trigger', label: '触发位置 · %', min: 10, max: 100, step: 1 },
 ]
 function value(event: Event) {
   return (event.target as HTMLInputElement).value
@@ -56,24 +42,23 @@ function textInput(event: Event, key: 'content' | 'name') {
 function style(patch: Partial<NodeStyle>) {
   if (node.value) store.update(node.value.id, {}, patch)
 }
-function motion(patch: Partial<AnimationConfig>) {
-  if (node.value) store.update(node.value.id, {}, undefined, patch)
-}
 function numeric(event: Event, key: keyof NodeStyle, min: number) {
   const n = Number(value(event))
   if (Number.isFinite(n)) style({ [key]: Math.max(min, Math.min(160, n)) })
-}
-function motionNumber(event: Event, field: (typeof motionFields)[number]) {
-  const n = Number(value(event))
-  if (Number.isFinite(n)) motion({ [field.key]: Math.max(field.min, Math.min(field.max, n)) })
 }
 </script>
 <template>
   <aside class="properties panel">
     <div class="panel-tabs">
-      <button :class="{ active: tab === 'style' }" @click="tab = 'style'">
+      <button
+        :class="{ active: store.inspectorTab === 'style' }"
+        @click="store.inspectorTab = 'style'"
+      >
         <SlidersHorizontal :size="14" />属性</button
-      ><button :class="{ active: tab === 'motion' }" @click="tab = 'motion'">
+      ><button
+        :class="{ active: store.inspectorTab === 'motion' }"
+        @click="store.inspectorTab = 'motion'"
+      >
         <Sparkles :size="14" />动画<span class="beta-tag">BETA</span>
       </button>
     </div>
@@ -98,7 +83,7 @@ function motionNumber(event: Event, field: (typeof motionFields)[number]) {
           <Trash2 :size="15" />
         </button>
       </div>
-      <div v-if="tab === 'style'" class="property-fields">
+      <div v-if="store.inspectorTab === 'style'" class="property-fields">
         <label>图层名称<input :value="node.name" @input="textInput($event, 'name')" /></label>
         <label v-if="node.kind !== 'section'"
           >{{ node.kind === 'image' ? '图片描述（alt）' : '内容'
@@ -188,38 +173,7 @@ function motionNumber(event: Event, field: (typeof motionFields)[number]) {
           ></template>
         </div>
       </div>
-      <div v-else class="property-fields">
-        <label class="toggle-field"
-          >滚动入场动画<input
-            type="checkbox"
-            :checked="node.animation.enabled"
-            @change="motion({ enabled: ($event.target as HTMLInputElement).checked })"
-        /></label>
-        <p class="panel-help">
-          从下方的起始状态过渡到设计状态。点击「预览」查看，动画随页面一同保存。
-        </p>
-        <div class="field-pair">
-          <label v-for="field in motionFields" :key="field.key"
-            >{{ field.label
-            }}<input
-              type="number"
-              :min="field.min"
-              :max="field.max"
-              :step="field.step"
-              :value="node.animation[field.key]"
-              @change="motionNumber($event, field)"
-          /></label>
-        </div>
-        <label class="toggle-field"
-          >跟随滚动进度<input
-            type="checkbox"
-            :checked="node.animation.scrub"
-            @change="motion({ scrub: ($event.target as HTMLInputElement).checked })"
-        /></label>
-        <p class="panel-help">
-          跟随滚动时，进度由滚动距离决定；关闭时使用设定时长。系统开启「减少动态效果」时自动停用。
-        </p>
-      </div>
+      <MotionPanel v-else />
     </template>
   </aside>
 </template>

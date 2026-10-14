@@ -25,6 +25,8 @@ import ComponentLibrary from '../components/editor/ComponentLibrary.vue'
 import PropertyPanel from '../components/editor/PropertyPanel.vue'
 import NodeRenderer from '../components/editor/NodeRenderer.vue'
 import PreviewOverlay from '../components/editor/PreviewOverlay.vue'
+import TimelinePanel from '../components/editor/TimelinePanel.vue'
+import type { PreviewMode } from '../animation/runtime'
 import { useEditorStore } from '../stores/editor'
 import { useDragDrop } from '../composables/useDragDrop'
 import { parseDocument } from '../core/document'
@@ -33,6 +35,7 @@ const store = useEditorStore()
 const { drop } = useDragDrop()
 const device = ref<Device>('desktop')
 const preview = ref(false)
+const previewMode = ref<PreviewMode>('scroll')
 const menu = ref(false)
 const newPage = ref(false)
 const side = ref<'library' | 'properties' | null>(null)
@@ -126,6 +129,13 @@ function shortcuts(event: KeyboardEvent) {
 function beforeUnload(event: BeforeUnloadEvent) {
   if (store.dirty && !store.autosave()) event.preventDefault()
 }
+function openPreview(mode: PreviewMode = 'scroll') {
+  previewMode.value = mode
+  preview.value = true
+}
+function inspectMotion() {
+  side.value = 'properties'
+}
 async function closePreview() {
   preview.value = false
   await nextTick()
@@ -199,7 +209,7 @@ onBeforeUnmount(() => {
             <Redo2 :size="18" /></button
           ><span class="toolbar-divider"></span
           ><button class="btn small save-button" @click="store.save"><Save :size="15" />保存</button
-          ><button ref="previewButton" class="btn dark small" @click="preview = true">
+          ><button ref="previewButton" class="btn dark small" @click="openPreview()">
             <Play :size="14" />预览<ArrowUpRight :size="14" />
           </button>
         </div>
@@ -290,19 +300,20 @@ onBeforeUnmount(() => {
               <MousePointer2 :size="12" />点击编辑 · 拖动选中标签移动组件
             </div>
           </div>
+          <TimelinePanel @preview="openPreview('timeline')" @inspect="inspectMotion" />
           <footer class="canvas-status">
             <span
               ><Check :size="12" />{{
                 store.recoveryRequired ? '自动保存已暂停 · 请恢复或手动保存' : '自动保存至本机'
               }}</span
-            ><span>Vue 3 + TypeScript <i></i>Scroll Studio 0.1</span>
+            ><span>Vue 3 + TypeScript <i></i>Scroll Studio 0.2</span>
           </footer>
         </main>
         <PropertyPanel />
       </div>
       <input ref="file" type="file" accept="application/json,.json" hidden @change="importJson" />
     </div>
-    <PreviewOverlay v-if="preview" @close="closePreview" />
+    <PreviewOverlay v-if="preview" :initial-mode="previewMode" @close="closePreview" />
     <div v-if="newPage" class="modal-backdrop" @click.self="newPage = false">
       <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="new-page-title">
         <FilePlus2 :size="28" />

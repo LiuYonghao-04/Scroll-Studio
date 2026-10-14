@@ -13,13 +13,25 @@ export interface NodeStyle {
   align: 'left' | 'center' | 'right'
   layout: 'column' | 'row'
 }
-export interface AnimationConfig {
-  enabled: boolean
+export interface AnimationPose {
   y: number
   x: number
   scale: number
   rotation: number
   opacity: number
+}
+export const animationEases = ['none', 'power2.out', 'power2.inOut', 'back.out(1.4)'] as const
+export type AnimationEase = (typeof animationEases)[number]
+export interface AnimationKeyframe extends AnimationPose {
+  id: string
+  offset: number
+  ease: AnimationEase
+}
+export interface AnimationConfig {
+  enabled: boolean
+  mode: 'individual' | 'sequence'
+  start: number
+  keyframes: AnimationKeyframe[]
   duration: number
   trigger: number
   scrub: boolean
@@ -36,11 +48,18 @@ export interface PageNode {
   children: PageNode[]
 }
 export interface PageDocument {
-  version: 1
+  version: 2
   id: string
   name: string
   updatedAt: string
   nodes: PageNode[]
+  timeline: TimelineConfig
+}
+export interface TimelineConfig {
+  triggerNodeId: string | null
+  trigger: number
+  scrollDistance: number
+  scrub: boolean
 }
 export interface DragPayload {
   kind: 'new' | 'move'

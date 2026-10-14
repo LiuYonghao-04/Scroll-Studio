@@ -18,7 +18,7 @@
 
 ## 持久化
 
-localStorage key：`scroll-studio:document:v1`。修改后 900ms 防抖自动保存；手动保存和离开编辑器也会尝试保存。使用 Node schema version `1`。异常只显示错误，不伪造“已保存”。读取失败保留原始损坏数据；自动保存不会主动覆盖该错误状态下的草稿，手动保存表示用户选择保存当前画布。
+localStorage key：`scroll-studio:document:v1`（保留旧 key，避免遗失已有草稿）。当前文档 schema version `2`；读取 v1 时先验证完整旧数据，再在副本上将单一初始状态转换成两个关键帧，创建默认共享时间轴配置。读取迁移不会写盘，下一次保存才写入 v2；旧 JSON 同样经由 `parseDocument()` 迁移。修改后 900ms 防抖自动保存；手动保存和离开编辑器也会尝试保存。异常只显示错误，不伪造“已保存”。
 
 损坏草稿的保护使用独立的 `recoveryRequired` 状态，关闭错误提示不会解除保护。普通导入失败不会暂停后续自动保存；退出、卸载和防抖保存都走 `autosave()`，只有显式保存或成功导入备份后才解除损坏草稿保护。手机端也可从页面菜单手动保存。
 
@@ -36,6 +36,12 @@ JSON 导入限 2MB、500 个节点、深度 0–12；校验重复 ID、组件类
 
 首页：GSAP 进场 stagger、编辑器示意图视差、区块 reveal、滚动控制的旋转/缩放 timeline、画廊图像视差。原生滚动，不劫持滚轮。
 
-编辑器：每节点可保存 enabled、x、y、scale、rotation、opacity、duration、trigger、scrub。参数表达“从起始状态进入设计终态”。`ScrollTrigger` 使用 clamp 约束触发边界，避免页面底部组件的触发位置不可达。开启 scrub 时动画进度由滚动距离决定，duration 对此模式不作时间控制。
+编辑器：每节点保存 enabled、mode、start、duration、trigger、scrub 与 keyframes。关键帧具有稳定 ID、0–1 相对位置、完整 transform / opacity 状态及白名单曲线；首尾位置固定，帧顺序严格递增，数量 2–12。共享时间轴配置保存在文档根部，触发引用必须指向有效节点；删除触发节点或其祖先时，同一事务把触发目标恢复为页面。
 
-两处动画均使用 GSAP matchMedia，在 `prefers-reduced-motion` 下保持内容可见、停止动效，并通过 revert 清理。第一版不含多关键帧、跨元素时间线、pin、复杂 easing 编辑器或生产发布编译器。
+`core/motion.ts` 将结构化数据编译成与 DOM 无关的轨道与动画段：段起点 = 轨道起点 + 前帧位置 × 轨道时长，段时长 = 帧位置差 × 轨道时长。`animation/runtime.ts` 将这些段映射到 GSAP fromTo 和绝对时间位置；共享轨道归入一个 timeline，独立模式各自拥有 timeline / ScrollTrigger。编辑器不挂载执行器。
+
+`ScrollTrigger` 使用 clamp 约束触发边界，避免页面底部组件的触发位置不可达。共享 scrub 将滚动距离映射到整条时间轴，秒数表达相对节奏；关闭 scrub 后按秒播放。没有滚动空间时，scrub 显示完成状态，非 scrub 自动播放，以免内容停在透明起始状态。
+
+时间轴试播模式使用暂停的 GSAP timeline；同源 transport 消息控制 seek / play / pause，执行器每 100ms 至多回传一次进度，显式操作与完成状态立即回传。独立触发轨道在此模式保持静态设计。图片 load 只 refresh 触发位置，不再重建时间轴，避免打断播放。渲染 revision 防止旧异步挂载覆盖新页面；iframe 和面板消息都校验 origin / source。
+
+两处动画均使用 GSAP matchMedia，在 `prefers-reduced-motion` 下保持静态设计可见、停止动效，并通过 revert 清理。轨道拖动仅更新临时位置，在 pointerup 时提交一次事务；取消不生成历史，方向键和数值调整也可撤销。关键帧选区及播放进度属于瞬时 UI 状态，不进入文档。当前不含 pin、自定义曲线编辑器或生产发布编译器。

@@ -3,6 +3,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { useEditorStore } from '../src/stores/editor'
 import { createNode, newDocument, parseDocument, safeUrl } from '../src/core/document'
 import { loadDocument, saveDocument, STORAGE_KEY } from '../src/services/storage'
+import { createAnimation } from '../src/core/motion'
 
 beforeEach(() => {
   setActivePinia(createPinia())
@@ -97,12 +98,14 @@ describe('document transactions', () => {
   it('duplicates a nested subtree using new IDs and preserves animation settings', () => {
     const store = useEditorStore()
     const original = store.document.nodes[0]!
-    store.update(original.id, {}, undefined, { enabled: true, y: 120 })
+    store.update(original.id, {}, undefined, { enabled: true })
+    store.updateKeyframe(original.id, original.animation.keyframes[0]!.id, { y: 120 })
     store.duplicate(original.id)
     const copy = store.document.nodes[1]!
     expect(copy.id).not.toBe(original.id)
     expect(copy.children[0]!.id).not.toBe(original.children[0]!.id)
-    expect(copy.animation.y).toBe(120)
+    expect(copy.animation.keyframes[0]!.y).toBe(120)
+    expect(copy.animation.keyframes[0]!.id).not.toBe(original.animation.keyframes[0]!.id)
   })
   it('clears a child selection when its ancestor is deleted', () => {
     const store = useEditorStore()
@@ -165,12 +168,8 @@ describe('persistence and hostile data', () => {
   it('roundtrips nested styles and animation settings', () => {
     const doc = newDocument(true)
     doc.nodes[0]!.children[1]!.animation = {
+      ...createAnimation({ x: 32, y: 70, scale: 0.8, rotation: -12, opacity: 0.1 }),
       enabled: true,
-      x: 32,
-      y: 70,
-      scale: 0.8,
-      rotation: -12,
-      opacity: 0.1,
       duration: 1.2,
       trigger: 75,
       scrub: true,

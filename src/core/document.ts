@@ -1,4 +1,5 @@
 import { nodeKinds, type PageDocument, type PageNode, type NodeKind } from '../types/editor'
+import { createAnimation, defaultTimeline, validAnimation, validTimeline } from './motion'
 
 export const nodeLabels: Record<NodeKind, string> = {
   section: '容器',
@@ -33,27 +34,18 @@ export function createNode(kind: NodeKind): PageNode {
       align: 'left',
       layout: 'column',
     },
-    animation: {
-      enabled: false,
-      y: 48,
-      x: 0,
-      scale: 1,
-      rotation: 0,
-      opacity: 0,
-      duration: 0.8,
-      trigger: 85,
-      scrub: false,
-    },
+    animation: createAnimation(),
     children: [],
   }
 }
 export function newDocument(starter = false): PageDocument {
   const doc: PageDocument = {
-    version: 1,
+    version: 2,
     id: crypto.randomUUID(),
     name: starter ? '我的第一个灵感' : '未命名页面',
     updatedAt: new Date().toISOString(),
     nodes: [],
+    timeline: defaultTimeline(),
   }
   if (starter) {
     const section = createNode('section')
@@ -147,15 +139,7 @@ export function parseDocument(input: unknown): PageDocument {
       ['sans', 'serif', 'mono'].includes(String(s.fontFamily)) &&
       ['left', 'center', 'right'].includes(String(s.align)) &&
       ['row', 'column'].includes(String(s.layout)) &&
-      typeof a.enabled === 'boolean' &&
-      typeof a.scrub === 'boolean' &&
-      finite(a.x, -500, 500) &&
-      finite(a.y, -500, 500) &&
-      finite(a.scale, 0.1, 3) &&
-      finite(a.rotation, -180, 180) &&
-      finite(a.opacity, 0, 1) &&
-      finite(a.duration, 0.1, 5) &&
-      finite(a.trigger, 10, 100) &&
+      validAnimation(a, object(data) && data.version === 1) &&
       Array.isArray(v.children) &&
       (v.kind === 'section' || v.children.length === 0) &&
       v.children.every((c) => validNode(c, depth + 1))
@@ -163,13 +147,44 @@ export function parseDocument(input: unknown): PageDocument {
   }
   if (
     !object(data) ||
-    data.version !== 1 ||
+    (data.version !== 1 && data.version !== 2) ||
     !str(data.id) ||
     !str(data.name) ||
     !str(data.updatedAt) ||
     !Array.isArray(data.nodes) ||
-    !data.nodes.every((n) => validNode(n, 0))
+    !data.nodes.every((n) => validNode(n, 0)) ||
+    (data.version === 2 && !validTimeline(data.timeline, ids))
   )
     throw new Error('页面数据格式无效，或超出了支持的版本与大小。')
-  return clone(data as unknown as PageDocument)
+  const result = clone(data)
+  if (result.version === 1) {
+    // Validate the complete v1 tree before migrating a copy; never mutate a stored/imported input.
+    const migrate = (nodes: Record<string, unknown>[]) => {
+      for (const node of nodes) {
+        const old = node.animation as {
+          x: number
+          y: number
+          scale: number
+          rotation: number
+          opacity: number
+          enabled: boolean
+          duration: number
+          trigger: number
+          scrub: boolean
+        }
+        node.animation = {
+          ...createAnimation(old),
+          enabled: old.enabled,
+          duration: old.duration,
+          trigger: old.trigger,
+          scrub: old.scrub,
+        }
+        migrate(node.children as Record<string, unknown>[])
+      }
+    }
+    migrate(result.nodes as Record<string, unknown>[])
+    result.version = 2
+    result.timeline = defaultTimeline()
+  }
+  return result as unknown as PageDocument
 }

@@ -3,34 +3,46 @@ import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import NodeRenderer from '../components/editor/NodeRenderer.vue'
 import { newDocument, parseDocument } from '../core/document'
 import { loadDocument } from '../services/storage'
-import { mountPageAnimations } from '../animation/runtime'
+import {
+  mountPageAnimations,
+  refreshPageAnimations,
+  type AnimationPlayer,
+  type PreviewMode,
+} from '../animation/runtime'
 const doc = ref(newDocument())
 const root = ref<HTMLElement>()
-let cleanup: (() => void) | undefined
+let player: AnimationPlayer | undefined
 let revision = 0
-async function render(input: unknown) {
+async function render(input: unknown, mode: PreviewMode = 'scroll') {
   try {
     const next = parseDocument(input)
     const current = ++revision
-    cleanup?.()
+    player?.dispose()
     doc.value = next
     await nextTick()
-    if (current === revision && root.value) cleanup = mountPageAnimations(root.value, next.nodes)
+    if (current === revision && root.value)
+      player = mountPageAnimations(root.value, next, mode, (state) => {
+        window.parent.postMessage({ type: 'scroll-studio:playback', ...state }, location.origin)
+      })
   } catch {
     /* Invalid messages never replace the active page. */
   }
 }
-function receive(event: MessageEvent) {
-  if (
-    event.origin !== location.origin ||
-    event.source !== window.parent ||
-    event.data?.type !== 'scroll-studio:preview'
-  )
-    return
-  void render(event.data.document)
+function receive(event: MessageEvent<unknown>) {
+  if (event.origin !== location.origin || event.source !== window.parent) return
+  if (typeof event.data !== 'object' || event.data === null) return
+  const data = event.data as Record<string, unknown>
+  if (data.type === 'scroll-studio:preview')
+    void render(data.document, data.mode === 'timeline' ? 'timeline' : 'scroll')
+  if (data.type === 'scroll-studio:transport') {
+    if (data.action === 'seek' && typeof data.time === 'number' && Number.isFinite(data.time))
+      player?.seek(data.time)
+    if (data.action === 'play') player?.play()
+    if (data.action === 'pause') player?.pause()
+  }
 }
 function refreshImages() {
-  void render(doc.value)
+  refreshPageAnimations()
 }
 onMounted(() => {
   window.addEventListener('message', receive)
@@ -44,7 +56,8 @@ onMounted(() => {
 })
 onBeforeUnmount(() => {
   window.removeEventListener('message', receive)
-  cleanup?.()
+  revision++
+  player?.dispose()
 })
 </script>
 <template>

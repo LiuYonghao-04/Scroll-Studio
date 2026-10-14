@@ -44,16 +44,21 @@ npm run preview
 - 上移/下移、复制、删除、撤销/重做；Ctrl/Cmd+Z、Shift+Ctrl/Cmd+Z、Ctrl+Y、Ctrl/Cmd+S。表单输入中保留原生编辑快捷键。
 - 900ms 自动保存、本机草稿恢复、显式存储失败提示；数据版本与完整结构校验。
 - 超出第一阶段的小型动画闭环：配置位移、缩放、旋转、透明度、时长、触发线和 scrub；保存参数后在预览实际执行。
+- 第二阶段动画编排：每个组件 2–12 个关键帧，编辑帧位置、位移、缩放、旋转、透明度及四种曲线；共享时间轴支持轨道开始时间、时长、鼠标拖动和方向键微调。
+- 独立触发 / 共享时间轴两种播放方式；共享触发元素、触发线、滚动距离和 scrub 可持久化。预览支持滚动体验与时间轴试播，提供播放、暂停、进度定位和重播。
+- schema v2 自动迁移 v1 本地草稿与 JSON 备份；迁移读取不会覆盖原始数据，保存后写入新格式。无滚动空间的页面仍保持内容可见。
 - JSON 导出与校验导入，导入和新建可以撤销。对不合法 URL 不执行，对任意输入文字不使用 v-html。
 
-快速体验：进入工作室 → 拖动「标题」到容器底部 → 修改右侧内容 → 「动画」开启入场 → 点击预览并滚动 → 切换手机视口 → 关闭预览并刷新，草稿仍在。
+快速体验：进入工作室 → 选择标题 → 画布下方「加入选中组件」→ 右侧「动画」→ 添加关键帧并修改参数 → 选择另一个组件加入时间轴 → 拖动轨道调整出现时刻 →「试播」播放或拖动进度 → 切回「滚动体验」查看实际触发 → 保存、刷新，编排仍在。
+
+详细使用方法、数据迁移与动画语义见 [动画编排说明](docs/ANIMATION_EDITOR.md)。
 
 ## 尚未实现及明确边界
 
 - 无多项目/多页面列表；工作区保存一个当前文档，新建会替换它，需长期保留多个作品时使用 JSON 备份。
 - 没有自由绝对坐标拖放、画布缩放手柄、网格吸附或任意组件尺寸编辑；位置由布局顺序、容器和间距决定。
 - 没有富文本、文件上传、媒体管理、断点独立样式；图片目前编辑 URL。
-- 没有多关键帧动画编排、时间轴、pin、跨节点协同时间线或自定义曲线。
+- 没有 pin、多场景时间轴、循环/yoyo、贝塞尔自定义曲线、轨道伸缩手柄或关键帧菱形直接拖动；轨道时长与关键帧位置由右侧数值面板编辑。
 - 没有 HTML 导出、线上页面发布、账号、后端、多人协作、支付、订阅或云端同步。
 - 桌面 HTML Drag and Drop 是首选；手机端使用点击添加与排序按钮，不承诺原生触摸拖拽兼容。
 - 历史最多 60 步，仅在当前编辑会话保留；刷新恢复文档，不恢复 undo 堆栈。
@@ -79,6 +84,7 @@ Scroll Studio/
 ├── docs/
 │   ├── UPSTREAM_AUDIT.md
 │   ├── ARCHITECTURE.md
+│   ├── ANIMATION_EDITOR.md
 │   └── VERIFICATION.md
 ├── public/
 │   ├── favicon.svg
@@ -89,11 +95,13 @@ Scroll Studio/
 │   ├── router.ts
 │   ├── animation/runtime.ts
 │   ├── core/document.ts
+│   ├── core/motion.ts
 │   ├── composables/useDragDrop.ts
 │   ├── services/storage.ts
 │   ├── stores/editor.ts
 │   ├── types/editor.ts
 │   ├── styles/global.css
+│   ├── styles/editor-motion.css
 │   ├── components/
 │   │   ├── ui/BrandMark.vue
 │   │   ├── home/StudioPreview.vue
@@ -102,12 +110,16 @@ Scroll Studio/
 │   │       ├── LayerTree.vue
 │   │       ├── NodeRenderer.vue
 │   │       ├── PropertyPanel.vue
+│   │       ├── MotionPanel.vue
+│   │       ├── TimelinePanel.vue
 │   │       └── PreviewOverlay.vue
 │   └── views/
 │       ├── HomeView.vue
 │       ├── EditorView.vue
 │       └── RenderView.vue
-└── tests/editor.test.ts
+└── tests/
+    ├── editor.test.ts
+    └── motion.test.ts
 ```
 
 业务源码仅 `.ts` / `.vue`，Vue SFC 均为 `<script setup lang="ts">`；没有自写 `.js` / `.jsx`。第三方依赖和构建输出的 JavaScript 不属于业务源文件。架构数据流和模块边界见 [ARCHITECTURE](docs/ARCHITECTURE.md)。
@@ -119,6 +131,6 @@ Scroll Studio/
 ## 下一阶段
 
 1. 先确认可视化动画编辑产品的 GSAP 授权范围，再决定公开发布路线。
-2. 基于现有 `AnimationConfig` 增加动画轨道、关键帧、节点间顺序和时间轴预览，补齐执行器测试。
+2. 在已完成的关键帧和共享时间轴基础上增加多场景编排、轨道伸缩与关键帧拖动，补充持续执行的浏览器回归测试。
 3. 将布局属性扩展为按断点覆盖的 schema，增加 schema migration、页面集合与 IndexedDB 持久化。
 4. 设计静态导出编译器和发布产物规范，验证“编辑 → 保存 → 导入 → 发布”渲染一致性，再接后端。

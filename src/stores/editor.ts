@@ -9,11 +9,14 @@ import {
   parseDocument,
 } from '../core/document'
 import { loadDocument, saveDocument } from '../services/storage'
-import type { NodeKind, PageDocument, PageNode } from '../types/editor'
+import type { AnimationKeyframe, NodeKind, PageDocument, PageNode } from '../types/editor'
+import { insertKeyframe } from '../core/motion'
 
 export const useEditorStore = defineStore('editor', () => {
   const document = ref<PageDocument>(newDocument(true))
   const selectedId = ref<string | null>(null)
+  const inspectorTab = ref<'style' | 'motion'>('style')
+  const selectedKeyframeId = ref<string | null>(null)
   const past = ref<PageDocument[]>([])
   const future = ref<PageDocument[]>([])
   const status = ref('尚未保存')
@@ -37,7 +40,7 @@ export const useEditorStore = defineStore('editor', () => {
     try {
       parseDocument(next)
     } catch {
-      error.value = '操作未应用：页面最多支持 500 个组件和 13 层嵌套，请精简后重试。'
+      error.value = '操作未应用：请检查动画参数、关键帧顺序及页面限制（500 个组件、13 层嵌套）。'
       return false
     }
     if (!group || group !== lastGroup || Date.now() - lastEdit > 750) past.value.push(before)
@@ -105,6 +108,8 @@ export const useEditorStore = defineStore('editor', () => {
     commit((doc) => {
       const loc = findLocation(doc.nodes, id)
       if (loc) loc.siblings.splice(loc.index, 1)
+      if (doc.timeline.triggerNodeId && !findNode(doc.nodes, doc.timeline.triggerNodeId))
+        doc.timeline.triggerNodeId = null
     })
     if (!selected.value) selectedId.value = null
   }
@@ -116,6 +121,9 @@ export const useEditorStore = defineStore('editor', () => {
       const node = clone(loc.siblings[loc.index]!)
       const rekey = (n: PageNode) => {
         n.id = crypto.randomUUID()
+        n.animation.keyframes.forEach((frame) => {
+          frame.id = crypto.randomUUID()
+        })
         n.children.forEach(rekey)
       }
       rekey(node)
@@ -184,9 +192,43 @@ export const useEditorStore = defineStore('editor', () => {
   function create(starter = false) {
     replace(newDocument(starter))
   }
+  function addKeyframe(id: string) {
+    const node = findNode(document.value.nodes, id)
+    if (!node) return
+    const frames = insertKeyframe(node.animation.keyframes)
+    const inserted = frames.find(
+      (frame) => !node.animation.keyframes.some((old) => old.id === frame.id),
+    )
+    if (
+      inserted &&
+      commit((doc) => {
+        findNode(doc.nodes, id)!.animation.keyframes = frames
+      })
+    )
+      selectedKeyframeId.value = inserted.id
+  }
+  function updateKeyframe(
+    id: string,
+    frameId: string,
+    patch: Partial<Omit<AnimationKeyframe, 'id'>>,
+  ) {
+    commit((doc) => {
+      const frame = findNode(doc.nodes, id)?.animation.keyframes.find((f) => f.id === frameId)
+      if (frame) Object.assign(frame, patch)
+    })
+  }
+  function removeKeyframe(id: string, frameId: string) {
+    commit((doc) => {
+      const frames = findNode(doc.nodes, id)?.animation.keyframes
+      const index = frames?.findIndex((frame) => frame.id === frameId) ?? -1
+      if (frames && index > 0 && index < frames.length - 1) frames.splice(index, 1)
+    })
+  }
   return {
     document,
     selectedId,
+    inspectorTab,
+    selectedKeyframeId,
     selected,
     past,
     future,
@@ -210,5 +252,8 @@ export const useEditorStore = defineStore('editor', () => {
     restore,
     replace,
     create,
+    addKeyframe,
+    updateKeyframe,
+    removeKeyframe,
   }
 })
