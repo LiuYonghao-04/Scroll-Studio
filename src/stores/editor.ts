@@ -18,6 +18,8 @@ export const useEditorStore = defineStore('editor', () => {
   const future = ref<PageDocument[]>([])
   const status = ref('尚未保存')
   const error = ref('')
+  // A corrupt on-disk draft must survive background saves, even if its banner is dismissed.
+  const recoveryRequired = ref(false)
   const dirty = ref(false)
   const selected = computed(() =>
     selectedId.value ? findNode(document.value.nodes, selectedId.value) : undefined,
@@ -107,7 +109,8 @@ export const useEditorStore = defineStore('editor', () => {
     if (!selected.value) selectedId.value = null
   }
   function duplicate(id: string) {
-    commit((doc) => {
+    let duplicatedId: string | undefined
+    const duplicated = commit((doc) => {
       const loc = findLocation(doc.nodes, id)
       if (!loc) return
       const node = clone(loc.siblings[loc.index]!)
@@ -118,8 +121,9 @@ export const useEditorStore = defineStore('editor', () => {
       rekey(node)
       node.name += ' 副本'
       loc.siblings.splice(loc.index + 1, 0, node)
-      selectedId.value = node.id
+      duplicatedId = node.id
     })
+    if (duplicated && duplicatedId) selectedId.value = duplicatedId
   }
   function undo() {
     lastGroup = undefined
@@ -145,6 +149,7 @@ export const useEditorStore = defineStore('editor', () => {
     try {
       saveDocument(document.value)
       dirty.value = false
+      recoveryRequired.value = false
       error.value = ''
       status.value = '已保存到本机'
       return true
@@ -153,6 +158,10 @@ export const useEditorStore = defineStore('editor', () => {
       return false
     }
   }
+  function autosave() {
+    if (recoveryRequired.value) return false
+    return save()
+  }
   function restore() {
     try {
       const saved = loadDocument()
@@ -160,8 +169,11 @@ export const useEditorStore = defineStore('editor', () => {
         document.value = saved
         status.value = '已恢复本地草稿'
       }
+      recoveryRequired.value = false
     } catch {
-      error.value = '本地草稿无法读取。原数据未被覆盖，请先导出或检查浏览器存储。'
+      recoveryRequired.value = true
+      status.value = '草稿恢复失败 · 自动保存已暂停'
+      error.value = '本地草稿无法读取，原数据已保留。请导入有效备份，或点击「保存」用当前画布覆盖。'
     }
   }
   function replace(doc: PageDocument) {
@@ -180,6 +192,7 @@ export const useEditorStore = defineStore('editor', () => {
     future,
     status,
     error,
+    recoveryRequired,
     dirty,
     canUndo,
     canRedo,
@@ -193,6 +206,7 @@ export const useEditorStore = defineStore('editor', () => {
     undo,
     redo,
     save,
+    autosave,
     restore,
     replace,
     create,

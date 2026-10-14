@@ -1,6 +1,8 @@
 # Scroll Studio
 
-一个用于前端求职展示的可视化网页编辑器：**Vue 3 + TypeScript strict + Vite + Pinia + Vue Router + GSAP / ScrollTrigger**。在当前目录从零构建，可本地运行，不需要后端或账号。
+一个用于前端求职展示的可视化网页编辑器：**Vue 3 + TypeScript strict + Vite + Pinia + Vue Router + GSAP / ScrollTrigger**。从零构建，可本地运行，不需要后端或账号。
+
+代码仓库：[LiuYonghao-04/Scroll-Studio](https://github.com/LiuYonghao-04/Scroll-Studio)。
 
 ## 运行
 
@@ -20,7 +22,7 @@ npm run build
 npm run preview
 ```
 
-生产产物在 `dist/`。本轮仅本地交付，未部署网站、接入账号或开通外部服务。使用 `npm ci` 保持 lockfile 对应版本；TypeScript 固定在 5.9 系列，避开本次发现的 TS 7 与 vue-tsc 内部入口兼容问题。
+生产产物在 `dist/`。源码已提交 GitHub，尚未部署线上网站、接入账号或开通后端服务。使用 `npm ci` 保持 lockfile 对应版本；TypeScript 固定在 5.9 系列，避开本次发现的 TS 7 与 vue-tsc 内部入口兼容问题。
 
 ## 底座选型
 
@@ -63,6 +65,7 @@ npm run preview
 
 ```text
 Scroll Studio/
+├── .gitattributes
 ├── .gitignore
 ├── .prettierrc.json
 ├── index.html

@@ -49,7 +49,7 @@ watch(
   () => store.document,
   () => {
     clearTimeout(timer)
-    if (store.dirty && !store.error) timer = setTimeout(() => store.save(), 900)
+    if (store.dirty) timer = setTimeout(() => store.autosave(), 900)
   },
   { deep: true },
 )
@@ -60,6 +60,10 @@ function openNewPage() {
 function createBlankPage() {
   store.create()
   newPage.value = false
+}
+function saveFromMenu() {
+  store.save()
+  menu.value = false
 }
 function exportJson() {
   const blob = new Blob([JSON.stringify(store.document, null, 2)], { type: 'application/json' })
@@ -120,7 +124,7 @@ function shortcuts(event: KeyboardEvent) {
   }
 }
 function beforeUnload(event: BeforeUnloadEvent) {
-  if (store.dirty && !store.save()) event.preventDefault()
+  if (store.dirty && !store.autosave()) event.preventDefault()
 }
 async function closePreview() {
   preview.value = false
@@ -141,7 +145,7 @@ onBeforeUnmount(() => {
   clearTimeout(timer)
   window.removeEventListener('keydown', shortcuts)
   window.removeEventListener('beforeunload', beforeUnload)
-  if (store.dirty && !store.error) store.save()
+  if (store.dirty) store.autosave()
 })
 </script>
 <template>
@@ -163,6 +167,7 @@ onBeforeUnmount(() => {
                       doc.name = ($event.target as HTMLInputElement).value || '未命名页面'
                     })
                   " /></label
+              ><button @click="saveFromMenu"><Save :size="15" />保存当前页面</button
               ><button @click="openNewPage"><FilePlus2 :size="15" />新建页面</button
               ><button @click="exportJson"><Download :size="15" />导出页面 JSON</button
               ><button @click="file?.click()"><Upload :size="15" />导入页面 JSON</button
@@ -286,7 +291,10 @@ onBeforeUnmount(() => {
             </div>
           </div>
           <footer class="canvas-status">
-            <span><Check :size="12" />自动保存至本机</span
+            <span
+              ><Check :size="12" />{{
+                store.recoveryRequired ? '自动保存已暂停 · 请恢复或手动保存' : '自动保存至本机'
+              }}</span
             ><span>Vue 3 + TypeScript <i></i>Scroll Studio 0.1</span>
           </footer>
         </main>

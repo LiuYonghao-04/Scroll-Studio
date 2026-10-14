@@ -98,7 +98,8 @@ export function findLocation(
 }
 export function safeUrl(value: string, image = false): string {
   const clean = value.trim()
-  if (clean.startsWith('#') || /^\/(?!\/)/.test(clean)) return clean
+  // Browsers normalize a leading /\ into //; reject it before accepting local paths.
+  if (clean.startsWith('#') || /^\/(?![\\/])/.test(clean)) return clean
   try {
     const url = new URL(clean)
     return ['https:', 'http:', ...(!image ? ['mailto:', 'tel:'] : [])].includes(url.protocol)

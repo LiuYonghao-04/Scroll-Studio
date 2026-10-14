@@ -10,6 +10,18 @@ beforeEach(() => {
   vi.restoreAllMocks()
 })
 describe('document transactions', () => {
+  it('preserves the selection when duplication would exceed the document limit', () => {
+    const store = useEditorStore()
+    const full = newDocument()
+    full.nodes = Array.from({ length: 500 }, () => createNode('heading'))
+    store.replace(full)
+    const id = full.nodes[0]!.id
+    store.selectedId = id
+    store.duplicate(id)
+    expect(store.document.nodes).toHaveLength(500)
+    expect(store.selectedId).toBe(id)
+    expect(store.error).toContain('500')
+  })
   it('coalesces a typing burst and resets grouping after undo', () => {
     const store = useEditorStore()
     store.create()
@@ -127,6 +139,29 @@ describe('document transactions', () => {
   })
 })
 describe('persistence and hostile data', () => {
+  it('continues autosaving valid edits after a failed import', () => {
+    const store = useEditorStore()
+    const heading = store.document.nodes[0]!.children[1]!
+    store.error = '页面数据格式无效'
+    store.update(heading.id, { content: 'Valid work after a failed import' })
+    expect(store.autosave()).toBe(true)
+    expect(loadDocument()!.nodes[0]!.children[1]!.content).toBe('Valid work after a failed import')
+    expect(store.dirty).toBe(false)
+  })
+  it('protects corrupt disk data after banner dismissal until an explicit save', () => {
+    localStorage.setItem(STORAGE_KEY, '{bad json')
+    const store = useEditorStore()
+    store.restore()
+    store.error = ''
+    store.create()
+    expect(store.autosave()).toBe(false)
+    expect(store.recoveryRequired).toBe(true)
+    expect(store.dirty).toBe(true)
+    expect(localStorage.getItem(STORAGE_KEY)).toBe('{bad json')
+    expect(store.save()).toBe(true)
+    expect(store.recoveryRequired).toBe(false)
+    expect(loadDocument()).toEqual(store.document)
+  })
   it('roundtrips nested styles and animation settings', () => {
     const doc = newDocument(true)
     doc.nodes[0]!.children[1]!.animation = {
@@ -189,6 +224,7 @@ describe('persistence and hostile data', () => {
     expect(safeUrl('javascript:alert(1)')).toBe('')
     expect(safeUrl('data:text/html,hello')).toBe('')
     expect(safeUrl('//other.example')).toBe('')
+    expect(safeUrl('/\\other.example')).toBe('')
     expect(safeUrl('/images/landscape.svg', true)).toBe('/images/landscape.svg')
     expect(safeUrl('https://example.com')).toBe('https://example.com')
     expect(safeUrl('mailto:hello@example.com')).toBe('mailto:hello@example.com')
