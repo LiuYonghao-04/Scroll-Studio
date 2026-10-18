@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { Plus, Trash2, Diamond } from '@lucide/vue'
 import { useEditorStore } from '../../stores/editor'
 import { createAnimation } from '../../core/motion'
+import { editFrameOffset } from '../../core/timeline-edit'
 import {
   animationEases,
   type AnimationConfig,
@@ -55,13 +56,10 @@ function frameNumber(event: Event, field: (typeof fields)[number]) {
 }
 function offset(event: Event) {
   const n = Number(value(event)) / 100
-  if (!endpoint.value && Number.isFinite(n))
-    frame({
-      offset: Math.max(
-        frames.value[frameIndex.value - 1]!.offset + 0.001,
-        Math.min(frames.value[frameIndex.value + 1]!.offset - 0.001, n),
-      ),
-    })
+  if (node.value && selected.value && !endpoint.value && Number.isFinite(n)) {
+    const next = editFrameOffset(frames.value, selected.value.id, n, node.value.animation, 0)
+    if (next !== undefined) frame({ offset: next })
+  }
 }
 function preset(kind: 'rise' | 'fade' | 'turn') {
   const next = createAnimation()

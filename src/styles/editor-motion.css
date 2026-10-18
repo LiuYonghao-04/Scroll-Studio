@@ -130,18 +130,22 @@
   color: #97a18c;
   margin-bottom: 5px;
   font-family: var(--font-mono, monospace);
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: #fbfcf8;
+  padding: 4px 0 8px;
 }
 .timeline-ruler > div {
   display: flex;
   justify-content: space-between;
+  padding-right: 20px;
 }
 .timeline-tracks {
-  max-height: 150px;
-  overflow: auto;
-  padding-right: 5px;
+  padding: 0 14px 0 0;
 }
 .timeline-row {
-  min-height: 34px;
+  min-height: 60px;
   align-items: center;
   border-bottom: 1px solid #edf0e7;
 }
@@ -156,47 +160,195 @@
   text-overflow: ellipsis;
   padding-right: 12px;
   color: #536b46;
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: #fbfcf8;
+  height: 100%;
+}
+.timeline-row.selected .track-label {
+  background: #f0f5e9;
 }
 .track-label small {
   font-size: 9px;
   font-family: var(--font-mono, monospace);
   color: #92a183;
-  margin-left: 8px;
+  display: block;
+  margin-top: 5px;
 }
 .track-lane {
-  height: 30px;
+  height: 58px;
   position: relative;
   margin-right: 6px;
-  background-image: repeating-linear-gradient(
-    90deg,
-    #d8e1ce 0,
-    #d8e1ce 1px,
-    transparent 1px,
-    transparent 25%
-  );
+  background-image: linear-gradient(90deg, #d8e1ce 1px, transparent 1px);
+  background-size: var(--timeline-tick-size, 25%) 100%;
 }
 .track-clip {
   position: absolute;
-  top: 5px;
-  height: 20px;
+  top: 6px;
+  height: 22px;
   background: #d0e5b5;
   border: 1px solid #a6c181;
   border-radius: 3px;
+  min-width: 1px;
+}
+.track-move {
+  position: absolute;
+  inset: 0;
+  width: 100%;
   cursor: grab;
   touch-action: none;
-  min-width: 8px;
+  overflow: hidden;
+  font-size: 9px;
+  color: #597844;
+  font-variant-numeric: tabular-nums;
 }
-.track-clip:active {
+.track-move:active {
   cursor: grabbing;
   background: #c2dca3;
+}
+.track-resize {
+  position: absolute;
+  top: -1px;
+  width: 10px;
+  height: 22px;
+  cursor: ew-resize;
+  touch-action: none;
+  z-index: 1;
+}
+.track-resize::after {
+  content: '';
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  left: 4px;
+  width: 2px;
+  background: #698b4d;
+  border-radius: 1px;
+}
+.track-resize.start {
+  left: -5px;
+}
+.track-resize.end {
+  right: -5px;
+}
+.track-keyframe {
+  position: absolute;
+  top: 31px;
+  width: 22px;
+  height: 24px;
+  transform: translateX(-50%);
+  cursor: ew-resize;
+  touch-action: none;
+  z-index: 2;
+}
+.track-keyframe.fixed {
+  cursor: pointer;
+}
+.track-keyframe.active {
+  background: #dcebc9;
+  border-radius: 4px;
+}
+.track-keyframe:hover .track-diamond,
+.track-keyframe.active .track-diamond {
+  background: #3e642e;
+}
+.track-keyframe.fixed .track-diamond {
+  background: #fbfcf8;
+  border: 1px solid #63844b;
+}
+.track-keyframe:focus-visible {
+  outline: 2px solid #6e9252;
+  outline-offset: 0;
+  border-radius: 3px;
+}
+.timeline-row.is-dragging {
+  position: relative;
+  z-index: 5;
+}
+.timeline-drag-feedback {
+  position: absolute;
+  top: 0;
+  right: 0;
+  pointer-events: none;
+  background: #30452b;
+  color: #f4f7ee;
+  padding: 5px 8px;
+  border-radius: 4px;
+  z-index: 6;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.timeline-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 30px;
+  margin-bottom: 8px;
+}
+.timeline-snap {
+  padding: 5px 8px;
+  border: 1px solid #dce3d2;
+  border-radius: 4px;
+  font-size: 10px;
+  color: #8a997c;
+  white-space: nowrap;
+}
+.timeline-snap.active {
+  background: #eaf3df;
+  border-color: #b1c69a;
+  color: #4d713c;
+}
+.timeline-tool-help {
+  color: #94a187;
+  font-size: 9px;
+}
+.timeline-zoom {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: #678052;
+}
+.timeline-zoom output {
+  min-width: 25px;
+  text-align: center;
+}
+.timeline-scroll {
+  overflow: auto;
+  max-height: 190px;
+  padding-bottom: 5px;
+  scrollbar-width: thin;
+  scrollbar-color: #bccbaa #f0f4e9;
+}
+.timeline-grid {
+  min-width: 100%;
+}
+.timeline-ruler > span {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  background: #fbfcf8;
+}
+@media (max-width: 767px) {
+  .timeline-tool-help {
+    display: none;
+  }
+  .timeline-scroll {
+    max-height: 160px;
+  }
 }
 .track-diamond {
   position: absolute;
   width: 6px;
   height: 6px;
   background: #63844b;
-  top: 6px;
-  transform: translateX(-50%) rotate(45deg);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(45deg);
   pointer-events: none;
 }
 .timeline-hint {
