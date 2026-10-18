@@ -27,11 +27,9 @@ const progress = ref(0)
 let media: gsap.MatchMedia | undefined
 function go(id: string) {
   navOpen.value = false
-  document
-    .getElementById(id)
-    ?.scrollIntoView({
-      behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
-    })
+  document.getElementById(id)?.scrollIntoView({
+    behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+  })
 }
 onMounted(() => {
   media = gsap.matchMedia()
@@ -58,16 +56,14 @@ onMounted(() => {
         ease: 'none',
         scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: 1 },
       })
-      gsap.utils
-        .toArray<HTMLElement>('.reveal')
-        .forEach((el) =>
-          gsap.from(el, {
-            y: 45,
-            opacity: 0,
-            duration: 0.9,
-            scrollTrigger: { trigger: el, start: 'top 90%' },
-          }),
-        )
+      gsap.utils.toArray<HTMLElement>('.reveal').forEach((el) =>
+        gsap.from(el, {
+          y: 45,
+          opacity: 0,
+          duration: 0.9,
+          scrollTrigger: { trigger: el, start: 'top 90%' },
+        }),
+      )
       const timeline = gsap.timeline({
         scrollTrigger: {
           trigger: '.motion-section',
@@ -118,7 +114,7 @@ onBeforeUnmount(() => media?.revert())
           >底座调研 <ArrowUpRight :size="12"
         /></a>
       </nav>
-      <RouterLink class="btn dark nav-cta" to="/editor"
+      <RouterLink class="btn dark nav-cta" to="/projects"
         >进入工作室 <ArrowUpRight :size="15" /></RouterLink
       ><button
         class="mobile-menu icon-button"
@@ -145,7 +141,7 @@ onBeforeUnmount(() => media?.revert())
             把脑海里的画面，变成指尖下的体验。<br />拖拽、设计、预览，让每一屏都有你的表达。
           </p>
           <div class="hero-actions hero-reveal">
-            <RouterLink class="btn dark primary-cta" to="/editor"
+            <RouterLink class="btn dark primary-cta" to="/projects"
               >开始自由创作 <ArrowUpRight :size="19" /></RouterLink
             ><button class="watch-link" aria-label="看看滚动的魔法" @click="go('motion')">
               <span><Play :size="12" fill="currentColor" /></span>看看滚动的魔法
@@ -226,7 +222,7 @@ onBeforeUnmount(() => media?.revert())
               </div>
               <MoveUpRight :size="20" />
             </article>
-            <RouterLink class="inline-link reveal" to="/editor"
+            <RouterLink class="inline-link reveal" to="/projects"
               >打开画布，亲手试试 <ArrowRight :size="17"
             /></RouterLink>
           </div>
@@ -243,7 +239,7 @@ onBeforeUnmount(() => media?.revert())
             <div class="motion-chips">
               <span>ScrollTrigger</span><span>实时预览</span><span>可保存的动画</span>
             </div>
-            <RouterLink class="btn light" to="/editor"
+            <RouterLink class="btn light" to="/projects"
               >给你的页面加一点动态 <ArrowUpRight :size="17"
             /></RouterLink>
           </div>
@@ -272,7 +268,7 @@ onBeforeUnmount(() => media?.revert())
           <p>从容器和文字出发。<br />这些设计方向，等你在画布里实现。</p>
         </div>
         <div class="gallery-grid">
-          <RouterLink to="/editor" class="gallery-card gallery-large reveal"
+          <RouterLink to="/projects" class="gallery-card gallery-large reveal"
             ><div class="gallery-image landscape-card">
               <img
                 class="gallery-art"
@@ -290,7 +286,7 @@ onBeforeUnmount(() => media?.revert())
               <span>山野之间 <small>编辑风格 / 设计灵感</small></span
               ><span>01</span>
             </div></RouterLink
-          ><RouterLink to="/editor" class="gallery-card reveal"
+          ><RouterLink to="/projects" class="gallery-card reveal"
             ><div class="gallery-image type-card">
               <span>INDEPENDENT THINKING.</span>
               <div class="type-art">Less,<br /><em>but</em><br />better<span>®</span></div>
@@ -310,7 +306,7 @@ onBeforeUnmount(() => media?.revert())
         <div>
           <h2>好想法，<br />值得<span>一张画布。</span></h2>
           <div>
-            <RouterLink class="btn dark primary-cta" to="/editor"
+            <RouterLink class="btn dark primary-cta" to="/projects"
               >开始你的第一个页面 <ArrowUpRight :size="19"
             /></RouterLink>
             <p>无需账号。打开，就能开始。</p>

@@ -3,6 +3,7 @@ import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import NodeRenderer from '../components/editor/NodeRenderer.vue'
 import { newDocument, parseDocument } from '../core/document'
 import { loadDocument } from '../services/storage'
+import { ACTIVE_PROJECT_KEY, getProject } from '../services/projects'
 import {
   mountPageAnimations,
   refreshPageAnimations,
@@ -44,15 +45,17 @@ function receive(event: MessageEvent<unknown>) {
 function refreshImages() {
   refreshPageAnimations()
 }
-onMounted(() => {
+onMounted(async () => {
   window.addEventListener('message', receive)
+  window.parent.postMessage({ type: 'scroll-studio:ready' }, location.origin)
+  if (window.parent !== window) return
   try {
-    const saved = loadDocument()
+    const id = localStorage.getItem(ACTIVE_PROJECT_KEY)
+    const saved = id ? (await getProject(id)).document : loadDocument()
     if (saved) void render(saved)
   } catch {
     /* A parent preview can still provide valid data. */
   }
-  window.parent.postMessage({ type: 'scroll-studio:ready' }, location.origin)
 })
 onBeforeUnmount(() => {
   window.removeEventListener('message', receive)

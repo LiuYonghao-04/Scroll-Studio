@@ -99,7 +99,7 @@ describe('keyframe positioning', () => {
     node.animation.keyframes[1]!.offset = offset
     expect(compileTrack(node).segments[0]!.duration).toBeCloseTo(0.6)
   })
-  it('commits frame movement and edge resizing as separate reversible transactions', () => {
+  it('commits frame movement and edge resizing as separate reversible transactions', async () => {
     const store = useEditorStore(),
       node = store.document.nodes[0]!.children[1]!
     store.addKeyframe(node.id)
@@ -114,7 +114,7 @@ describe('keyframe positioning', () => {
     expect(store.document.nodes[0]!.children[1]!.animation.keyframes[1]!.offset).toBe(0.5)
     store.redo()
     store.redo()
-    expect(store.save()).toBe(true)
+    expect(await store.save()).toBe(true)
     expect(loadDocument()).toEqual(store.document)
   })
 })

@@ -142,26 +142,26 @@ describe('document transactions', () => {
   })
 })
 describe('persistence and hostile data', () => {
-  it('continues autosaving valid edits after a failed import', () => {
+  it('continues autosaving valid edits after a failed import', async () => {
     const store = useEditorStore()
     const heading = store.document.nodes[0]!.children[1]!
     store.error = '页面数据格式无效'
     store.update(heading.id, { content: 'Valid work after a failed import' })
-    expect(store.autosave()).toBe(true)
+    expect(await store.autosave()).toBe(true)
     expect(loadDocument()!.nodes[0]!.children[1]!.content).toBe('Valid work after a failed import')
     expect(store.dirty).toBe(false)
   })
-  it('protects corrupt disk data after banner dismissal until an explicit save', () => {
+  it('protects corrupt disk data after banner dismissal until an explicit save', async () => {
     localStorage.setItem(STORAGE_KEY, '{bad json')
     const store = useEditorStore()
     store.restore()
     store.error = ''
     store.create()
-    expect(store.autosave()).toBe(false)
+    expect(await store.autosave()).toBe(false)
     expect(store.recoveryRequired).toBe(true)
     expect(store.dirty).toBe(true)
     expect(localStorage.getItem(STORAGE_KEY)).toBe('{bad json')
-    expect(store.save()).toBe(true)
+    expect(await store.save()).toBe(true)
     expect(store.recoveryRequired).toBe(false)
     expect(loadDocument()).toEqual(store.document)
   })
@@ -184,13 +184,13 @@ describe('persistence and hostile data', () => {
     expect(store.error).toContain('无法读取')
     expect(localStorage.getItem(STORAGE_KEY)).toBe('{bad json')
   })
-  it('reports storage quota failure without claiming successful save', () => {
+  it('reports storage quota failure without claiming successful save', async () => {
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new DOMException('Quota exceeded', 'QuotaExceededError')
     })
     const store = useEditorStore()
     store.create()
-    expect(store.save()).toBe(false)
+    expect(await store.save()).toBe(false)
     expect(store.dirty).toBe(true)
     expect(store.error).toContain('保存失败')
   })

@@ -1,7 +1,7 @@
 {
   "name": "scroll-studio",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.4.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
@@ -20,6 +20,7 @@
   "devDependencies": {
     "@types/node": "^22.20.5",
     "@vitejs/plugin-vue": "^6.0.10",
+    "fake-indexeddb": "^6.2.6",
     "jsdom": "^29.1.1",
     "prettier": "^3.9.10",
     "typescript": "~5.9.3",

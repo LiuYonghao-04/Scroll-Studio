@@ -13,7 +13,7 @@ npm ci
 npm run dev
 ```
 
-默认地址 `http://127.0.0.1:5173/`；首页 `/#/`，编辑器 `/#/editor`，内部预览 `/#/render`。如端口占用，以 Vite 输出地址为准。Hash 路由便于静态托管；当前资源按域名根路径组织。
+默认地址 `http://127.0.0.1:5173/`；首页 `/#/`，作品库 `/#/projects`，独立作品编辑器 `/#/editor/:projectId`，内部预览 `/#/render`。旧入口 `/#/editor` 会打开最近作品；没有作品时创建初始画布。如端口占用，以 Vite 输出地址为准。Hash 路由便于静态托管；当前资源按域名根路径组织。
 
 ```sh
 npm run typecheck
@@ -46,23 +46,27 @@ npm run preview
 - 超出第一阶段的小型动画闭环：配置位移、缩放、旋转、透明度、时长、触发线和 scrub；保存参数后在预览实际执行。
 - 第二阶段动画编排：每个组件 2–12 个关键帧，编辑帧位置、位移、缩放、旋转、透明度及四种曲线；共享时间轴支持轨道开始时间、时长、鼠标拖动和方向键微调。
 - 0.3 精确编排：直接拖动关键帧菱形、拉伸轨道两端、0.1s 吸附 / Alt 0.01s 精调、1–8× 缩放与水平滚动；拖动实时显示时间，松手提交一次历史，Esc / 取消手势放弃操作。
+- 0.4 作品库：新建、搜索、重命名、复制、删除、独立作品地址、最后修改时间和布局缩略图；IndexedDB 保存文档与缩略图，自动迁移原有单页草稿并保留旧备份。
+- 三个可编辑模板：个人作品集、产品介绍、滚动叙事；也可创建空白作品。模板生成真实组件树、链接和动画参数，复制时重建 ID 并修正内部引用。
+- 保存队列、离开前写入、关闭页面恢复草稿，以及版本冲突检查；切换作品清空历史和选区，防止跨作品撤销或延迟保存写回已删除记录。
 - 独立触发 / 共享时间轴两种播放方式；共享触发元素、触发线、滚动距离和 scrub 可持久化。预览支持滚动体验与时间轴试播，提供播放、暂停、进度定位和重播。
 - schema v2 自动迁移 v1 本地草稿与 JSON 备份；迁移读取不会覆盖原始数据，保存后写入新格式。无滚动空间的页面仍保持内容可见。
-- JSON 导出与校验导入，导入和新建可以撤销。对不合法 URL 不执行，对任意输入文字不使用 v-html。
+- JSON 导出与校验导入：作品库导入生成独立作品；编辑器内导入替换当前作品内容并可撤销。对不合法 URL 不执行，对任意输入文字不使用 v-html。
 
-快速体验：进入工作室 → 选择标题 → 画布下方「加入选中组件」→ 右侧「动画」→ 添加关键帧并修改参数 → 选择另一个组件加入时间轴 → 拖动轨道调整出现时刻 →「试播」播放或拖动进度 → 切回「滚动体验」查看实际触发 → 保存、刷新，编排仍在。
+快速体验：进入作品库 → 新建作品 → 选择模板 → 编辑文字与动画 → 保存 → 从页面菜单返回「我的作品」→ 复制或打开另一件作品。每件作品独立保存；布局缩略图是根据内容生成的 SVG 示意图，非像素截图。
 
 详细使用方法、数据迁移与动画语义见 [动画编排说明](docs/ANIMATION_EDITOR.md)。
+作品管理、恢复和存储边界见 [作品库说明](docs/PROJECT_LIBRARY.md)。
 
 ## 尚未实现及明确边界
 
-- 无多项目/多页面列表；工作区保存一个当前文档，新建会替换它，需长期保留多个作品时使用 JSON 备份。
+- 每件作品目前是一张单页，没有单一作品内的多页面站点路由；作品库支持多件独立作品。删除需确认，删除后无法撤销，需长期留档时导出 JSON。
 - 没有自由绝对坐标拖放、画布缩放手柄、网格吸附或任意组件尺寸编辑；位置由布局顺序、容器和间距决定。
 - 没有富文本、文件上传、媒体管理、断点独立样式；图片目前编辑 URL。
 - 没有 pin、多场景时间轴、循环/yoyo、贝塞尔自定义曲线、拖动时自动横向滚动或多个轨道同时选中；精确数值也可在右侧面板编辑。
 - 没有 HTML 导出、线上页面发布、账号、后端、多人协作、支付、订阅或云端同步。
 - 桌面 HTML Drag and Drop 是首选；手机端使用点击添加与排序按钮，不承诺原生触摸拖拽兼容。
-- 历史最多 60 步，仅在当前编辑会话保留；刷新恢复文档，不恢复 undo 堆栈。
+- 历史最多 60 步，仅在当前作品编辑会话保留；刷新或切换作品清空 undo 堆栈。
 - 本地存储与浏览器/域名绑定，浏览器清理存储会删除草稿；存储故障时可导出 JSON 备份。
 
 ## 项目目录
@@ -86,6 +90,7 @@ Scroll Studio/
 │   ├── UPSTREAM_AUDIT.md
 │   ├── ARCHITECTURE.md
 │   ├── ANIMATION_EDITOR.md
+│   ├── PROJECT_LIBRARY.md
 │   └── VERIFICATION.md
 ├── public/
 │   ├── favicon.svg
@@ -98,16 +103,23 @@ Scroll Studio/
 │   ├── core/document.ts
 │   ├── core/motion.ts
 │   ├── core/timeline-edit.ts
+│   ├── core/templates.ts
+│   ├── core/thumbnail.ts
 │   ├── composables/useDragDrop.ts
 │   ├── composables/useTimelineDrag.ts
 │   ├── services/storage.ts
+│   ├── services/projects.ts
 │   ├── stores/editor.ts
+│   ├── stores/projects.ts
 │   ├── types/editor.ts
+│   ├── types/project.ts
 │   ├── styles/global.css
 │   ├── styles/editor-motion.css
+│   ├── styles/projects.css
 │   ├── components/
 │   │   ├── ui/BrandMark.vue
 │   │   ├── home/StudioPreview.vue
+│   │   ├── projects/ProjectCreateDialog.vue
 │   │   └── editor/
 │   │       ├── ComponentLibrary.vue
 │   │       ├── LayerTree.vue
@@ -120,11 +132,13 @@ Scroll Studio/
 │   └── views/
 │       ├── HomeView.vue
 │       ├── EditorView.vue
+│       ├── ProjectsView.vue
 │       └── RenderView.vue
 └── tests/
     ├── editor.test.ts
     ├── motion.test.ts
-    └── timeline-edit.test.ts
+    ├── timeline-edit.test.ts
+    └── projects.test.ts
 ```
 
 业务源码仅 `.ts` / `.vue`，Vue SFC 均为 `<script setup lang="ts">`；没有自写 `.js` / `.jsx`。第三方依赖和构建输出的 JavaScript 不属于业务源文件。架构数据流和模块边界见 [ARCHITECTURE](docs/ARCHITECTURE.md)。
@@ -137,5 +151,5 @@ Scroll Studio/
 
 1. 先确认可视化动画编辑产品的 GSAP 授权范围，再决定公开发布路线。
 2. 在已完成的关键帧、共享时间轴和精确拖动基础上增加多场景编排、多选和自动横向滚动，补充持续执行的浏览器回归测试。
-3. 将布局属性扩展为按断点覆盖的 schema，增加 schema migration、页面集合与 IndexedDB 持久化。
+3. 在作品库和 IndexedDB 基础上，将布局属性扩展为按断点覆盖的 schema，增加作品内的多页面集合与资源管理。
 4. 设计静态导出编译器和发布产物规范，验证“编辑 → 保存 → 导入 → 发布”渲染一致性，再接后端。

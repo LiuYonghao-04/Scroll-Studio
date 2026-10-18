@@ -11,6 +11,14 @@ import {
 import { loadDocument, saveDocument } from '../services/storage'
 import type { AnimationKeyframe, NodeKind, PageDocument, PageNode } from '../types/editor'
 import { insertKeyframe } from '../core/motion'
+import {
+  ACTIVE_PROJECT_KEY,
+  getProject,
+  journalKey,
+  readJournal,
+  updateProject,
+  writeJournal,
+} from '../services/projects'
 
 export const useEditorStore = defineStore('editor', () => {
   const document = ref<PageDocument>(newDocument(true))
@@ -24,6 +32,10 @@ export const useEditorStore = defineStore('editor', () => {
   // A corrupt on-disk draft must survive background saves, even if its banner is dismissed.
   const recoveryRequired = ref(false)
   const dirty = ref(false)
+  const projectId = ref<string | null>(null)
+  const projectRevision = ref(0)
+  let saveQueue: Promise<boolean> = Promise.resolve(true)
+  let openVersion = 0
   const selected = computed(() =>
     selectedId.value ? findNode(document.value.nodes, selectedId.value) : undefined,
   )
@@ -153,7 +165,42 @@ export const useEditorStore = defineStore('editor', () => {
     status.value = '已重做 · 待保存'
     if (!selected.value) selectedId.value = null
   }
-  function save() {
+  async function save(): Promise<boolean> {
+    if (projectId.value) {
+      const id = projectId.value,
+        snapshot = clone(document.value)
+      const operation = async () => {
+        if (projectId.value !== id) return false
+        try {
+          try {
+            if (!recoveryRequired.value) writeJournal(id, document.value, projectRevision.value)
+          } catch {
+            /* IndexedDB remains the primary store. */
+          }
+          const saved = await updateProject(id, snapshot, projectRevision.value)
+          if (projectId.value !== id) return true
+          projectRevision.value = saved.revision
+          const unchanged = JSON.stringify(document.value) === JSON.stringify(snapshot)
+          dirty.value = !unchanged
+          recoveryRequired.value = false
+          error.value = ''
+          status.value = unchanged ? '已保存到作品库' : '有未保存的修改'
+          try {
+            if (unchanged) localStorage.removeItem(journalKey(id))
+            else writeJournal(id, document.value, saved.revision)
+          } catch {
+            /* A successful database transaction is already durable. */
+          }
+          return true
+        } catch (reason) {
+          error.value =
+            reason instanceof Error ? reason.message : '作品保存失败，请导出 JSON 备份。'
+          return false
+        }
+      }
+      saveQueue = saveQueue.then(operation, operation)
+      return saveQueue
+    }
     try {
       saveDocument(document.value)
       dirty.value = false
@@ -166,9 +213,67 @@ export const useEditorStore = defineStore('editor', () => {
       return false
     }
   }
-  function autosave() {
+  async function autosave() {
     if (recoveryRequired.value) return false
     return save()
+  }
+  function journal() {
+    if (recoveryRequired.value) return false
+    try {
+      if (projectId.value) writeJournal(projectId.value, document.value, projectRevision.value)
+      else saveDocument(document.value)
+      return true
+    } catch {
+      return false
+    }
+  }
+  async function openProject(id: string): Promise<boolean> {
+    const version = ++openVersion
+    if (dirty.value && projectId.value && !(await autosave())) return false
+    await saveQueue
+    const saved = await getProject(id)
+    if (version !== openVersion) return false
+    let next = saved.document,
+      recovered = false,
+      warning = ''
+    try {
+      const pending = readJournal(id)
+      if (pending && JSON.stringify(pending.document) !== JSON.stringify(saved.document)) {
+        if (pending.revision !== saved.revision)
+          warning = '待保存草稿与作品版本不一致，原草稿已保留。请先下载恢复备份，再决定是否导入。'
+        else {
+          next = pending.document
+          recovered = true
+        }
+      }
+    } catch {
+      warning = '待保存草稿无法读取，原数据已保留。请先下载恢复备份，再手动保存当前画布。'
+    }
+    document.value = clone(next)
+    projectId.value = id
+    projectRevision.value = saved.revision
+    selectedId.value = null
+    selectedKeyframeId.value = null
+    past.value = []
+    future.value = []
+    lastGroup = undefined
+    dirty.value = recovered
+    recoveryRequired.value = !!warning
+    error.value = warning
+    status.value = warning
+      ? '恢复需处理 · 自动保存已暂停'
+      : recovered
+        ? '已恢复待保存草稿'
+        : '已打开作品'
+    try {
+      localStorage.setItem(ACTIVE_PROJECT_KEY, id)
+    } catch {
+      /* Direct project URLs still work. */
+    }
+    return true
+  }
+  function cancelOpening() {
+    openVersion++
   }
   function restore() {
     try {
@@ -236,6 +341,8 @@ export const useEditorStore = defineStore('editor', () => {
     error,
     recoveryRequired,
     dirty,
+    projectId,
+    projectRevision,
     canUndo,
     canRedo,
     commit,
@@ -249,6 +356,9 @@ export const useEditorStore = defineStore('editor', () => {
     redo,
     save,
     autosave,
+    journal,
+    openProject,
+    cancelOpening,
     restore,
     replace,
     create,

@@ -3,7 +3,8 @@ export const router = createRouter({
   history: createWebHashHistory(),
   routes: [
     { path: '/', component: () => import('./views/HomeView.vue') },
-    { path: '/editor', component: () => import('./views/EditorView.vue') },
+    { path: '/projects', component: () => import('./views/ProjectsView.vue') },
+    { path: '/editor/:projectId?', component: () => import('./views/EditorView.vue') },
     { path: '/render', component: () => import('./views/RenderView.vue') },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],

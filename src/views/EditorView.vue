@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -7,6 +8,7 @@ import {
   ChevronDown,
   Download,
   FilePlus2,
+  FolderOpen,
   Menu,
   Monitor,
   MousePointer2,
@@ -26,12 +28,29 @@ import PropertyPanel from '../components/editor/PropertyPanel.vue'
 import NodeRenderer from '../components/editor/NodeRenderer.vue'
 import PreviewOverlay from '../components/editor/PreviewOverlay.vue'
 import TimelinePanel from '../components/editor/TimelinePanel.vue'
+import ProjectCreateDialog from '../components/projects/ProjectCreateDialog.vue'
+import { useProjectsStore } from '../stores/projects'
+import {
+  ACTIVE_PROJECT_KEY,
+  createProject,
+  initializeProjects,
+  journalKey,
+  listProjects,
+} from '../services/projects'
+import { newDocument } from '../core/document'
+import type { TemplateId } from '../types/project'
 import type { PreviewMode } from '../animation/runtime'
 import { useEditorStore } from '../stores/editor'
 import { useDragDrop } from '../composables/useDragDrop'
 import { parseDocument } from '../core/document'
 import { deviceWidths, type Device } from '../types/editor'
 const store = useEditorStore()
+const projects = useProjectsStore(),
+  route = useRoute(),
+  router = useRouter()
+const initializing = ref(true),
+  routeError = ref('')
+let opening = 0
 const { drop } = useDragDrop()
 const device = ref<Device>('desktop')
 const preview = ref(false)
@@ -60,9 +79,67 @@ function openNewPage() {
   newPage.value = true
   menu.value = false
 }
-function createBlankPage() {
-  store.create()
+async function createNewProject(template: TemplateId, name: string) {
+  if (store.dirty && !(await store.autosave()))
+    throw new Error(store.error || '请先保存当前作品或导出备份。')
+  const created = await projects.create(template, name)
+  await router.push(`/editor/${created.id}`)
   newPage.value = false
+}
+async function openRoute() {
+  const current = ++opening
+  initializing.value = true
+  routeError.value = ''
+  try {
+    await initializeProjects()
+    const id = route.params.projectId
+    if (typeof id === 'string' && id) {
+      if (!(await store.openProject(id))) throw new Error(store.error || '无法切换作品。')
+    } else {
+      const all = await listProjects()
+      let active: string | null = null
+      try {
+        active = localStorage.getItem(ACTIVE_PROJECT_KEY)
+      } catch {
+        /* Latest work remains accessible from the library. */
+      }
+      const project =
+        all.find((p) => p.id === active) ?? all[0] ?? (await createProject(newDocument(true)))
+      await router.replace(`/editor/${project.id}`)
+    }
+  } catch (reason) {
+    if (current === opening)
+      routeError.value = reason instanceof Error ? reason.message : '作品无法打开。'
+  } finally {
+    if (current === opening) initializing.value = false
+  }
+}
+async function flushBeforeNavigation() {
+  return !store.dirty || (await store.autosave())
+}
+onBeforeRouteLeave(flushBeforeNavigation)
+onBeforeRouteUpdate(flushBeforeNavigation)
+function downloadRecovery() {
+  try {
+    const raw = store.projectId ? localStorage.getItem(journalKey(store.projectId)) : null
+    if (!raw) return
+    let data = raw
+    try {
+      const parsed: unknown = JSON.parse(raw)
+      if (typeof parsed === 'object' && parsed !== null && 'document' in parsed)
+        data = JSON.stringify(parsed.document, null, 2)
+    } catch {
+      /* Preserve corrupt raw data for inspection. */
+    }
+    const url = URL.createObjectURL(new Blob([data], { type: 'application/json' })),
+      link = document.createElement('a')
+    link.href = url
+    link.download = 'scroll-studio-recovery.json'
+    link.click()
+    setTimeout(() => URL.revokeObjectURL(url), 0)
+  } catch {
+    store.error = '无法下载恢复备份，请检查浏览器存储权限。'
+  }
 }
 function saveFromMenu() {
   store.save()
@@ -127,7 +204,7 @@ function shortcuts(event: KeyboardEvent) {
   }
 }
 function beforeUnload(event: BeforeUnloadEvent) {
-  if (store.dirty && !store.autosave()) event.preventDefault()
+  if (store.dirty && !store.journal()) event.preventDefault()
 }
 function openPreview(mode: PreviewMode = 'scroll') {
   previewMode.value = mode
@@ -142,7 +219,6 @@ async function closePreview() {
   previewButton.value?.focus()
 }
 onMounted(() => {
-  if (!store.dirty && !store.past.length) store.restore()
   observer = new ResizeObserver((entries) => {
     stageWidth.value = entries[0]?.contentRect.width ?? 900
   })
@@ -150,7 +226,10 @@ onMounted(() => {
   window.addEventListener('keydown', shortcuts)
   window.addEventListener('beforeunload', beforeUnload)
 })
+watch(() => route.params.projectId, openRoute, { immediate: true })
 onBeforeUnmount(() => {
+  opening++
+  store.cancelOpening()
   observer?.disconnect()
   clearTimeout(timer)
   window.removeEventListener('keydown', shortcuts)
@@ -160,7 +239,7 @@ onBeforeUnmount(() => {
 </script>
 <template>
   <div class="editor-shell">
-    <div :inert="preview || newPage">
+    <div :inert="preview || newPage || initializing || !!routeError">
       <header class="editor-header">
         <div class="toolbar-group">
           <BrandMark compact /><span class="toolbar-divider"></span>
@@ -178,9 +257,10 @@ onBeforeUnmount(() => {
                     })
                   " /></label
               ><button @click="saveFromMenu"><Save :size="15" />保存当前页面</button
-              ><button @click="openNewPage"><FilePlus2 :size="15" />新建页面</button
+              ><button @click="openNewPage"><FilePlus2 :size="15" />新建作品</button
               ><button @click="exportJson"><Download :size="15" />导出页面 JSON</button
               ><button @click="file?.click()"><Upload :size="15" />导入页面 JSON</button
+              ><RouterLink to="/projects"><FolderOpen :size="15" />我的作品</RouterLink
               ><RouterLink to="/"><ArrowLeft :size="15" />返回首页</RouterLink>
             </div>
           </div>
@@ -216,7 +296,9 @@ onBeforeUnmount(() => {
       </header>
       <div v-if="store.error" class="error-banner" role="alert">
         {{ store.error
-        }}<button aria-label="关闭错误提示" @click="store.error = ''"><X :size="14" /></button>
+        }}<button v-if="store.recoveryRequired && store.projectId" @click="downloadRecovery">
+          下载恢复备份</button
+        ><button aria-label="关闭错误提示" @click="store.error = ''"><X :size="14" /></button>
       </div>
       <div
         class="editor-workspace"
@@ -306,7 +388,7 @@ onBeforeUnmount(() => {
               ><Check :size="12" />{{
                 store.recoveryRequired ? '自动保存已暂停 · 请恢复或手动保存' : '自动保存至本机'
               }}</span
-            ><span>Vue 3 + TypeScript <i></i>Scroll Studio 0.3</span>
+            ><span>Vue 3 + TypeScript <i></i>Scroll Studio 0.4</span>
           </footer>
         </main>
         <PropertyPanel />
@@ -314,16 +396,13 @@ onBeforeUnmount(() => {
       <input ref="file" type="file" accept="application/json,.json" hidden @change="importJson" />
     </div>
     <PreviewOverlay v-if="preview" :initial-mode="previewMode" @close="closePreview" />
-    <div v-if="newPage" class="modal-backdrop" @click.self="newPage = false">
-      <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="new-page-title">
-        <FilePlus2 :size="28" />
-        <h2 id="new-page-title">从新的灵感开始</h2>
-        <p>新页面将替换当前工作区。你可以先导出 JSON 保留副本；新建后也可以撤销返回。</p>
-        <div class="dialog-actions">
-          <button class="btn" autofocus @click="newPage = false">继续编辑</button
-          ><button class="btn dark" @click="createBlankPage">创建空白页面</button>
-        </div>
-      </section>
+    <ProjectCreateDialog v-if="newPage" :create="createNewProject" @close="newPage = false" />
+    <div v-if="initializing || routeError" class="project-open-overlay">
+      <div role="status">
+        <h2>{{ routeError ? '作品暂时无法打开' : '正在打开你的作品…' }}</h2>
+        <p v-if="routeError" role="alert">{{ routeError }}</p>
+        <RouterLink v-if="routeError" class="btn" to="/projects">返回作品库</RouterLink>
+      </div>
     </div>
   </div>
 </template>

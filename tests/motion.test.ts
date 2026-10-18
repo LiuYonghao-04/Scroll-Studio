@@ -66,13 +66,13 @@ describe('document version migration', () => {
     legacy.nodes[0]!.animation.opacity = 10
     expect(() => parseDocument(legacy)).toThrow()
   })
-  it('saves an edited migrated document as v2 and restores the same frame IDs', () => {
+  it('saves an edited migrated document as v2 and restores the same frame IDs', async () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(legacyDocument()))
     const store = useEditorStore()
     store.restore()
     const node = store.document.nodes[0]!.children[1]!
     store.updateKeyframe(node.id, node.animation.keyframes[0]!.id, { y: 90 })
-    expect(store.autosave()).toBe(true)
+    expect(await store.autosave()).toBe(true)
     expect(loadDocument()).toEqual(store.document)
   })
 })
