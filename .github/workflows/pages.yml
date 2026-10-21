@@ -17,7 +17,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -32,10 +32,10 @@ jobs:
         run: npm test
       - name: Typecheck and build for Pages
         run: npm run build:pages
-      - name: Install browser
-        run: npx playwright install --with-deps chromium
-      - name: Verify production browser flows
-        run: npm run test:smoke
+      - name: Install browsers
+        run: npx playwright install --with-deps chromium firefox webkit
+      - name: Verify production flows in Chromium, Firefox and WebKit
+        run: npm run test:smoke:all
       - name: Upload website
         if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5

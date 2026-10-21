@@ -8,7 +8,7 @@
 
 ## 运行
 
-已在 Node.js `22.18.0` / npm `10.9.3` 下验证。建议使用 Node 22 LTS（>=22.12）。
+已在 Node.js `22.18.0` / npm `10.9.3` 下验证。需要 Node >=22.18，建议使用 Node 22 LTS；浏览器验收脚本直接运行 TypeScript。
 
 ```sh
 npm ci
@@ -25,6 +25,18 @@ npm run preview
 ```
 
 生产产物在 `dist/`。GitHub Pages 通过 Actions 部署公开体验版；无需账号或后端服务。使用 `npm ci` 保持 lockfile 对应版本；TypeScript 固定在 5.9 系列，避开本次发现的 TS 7 与 vue-tsc 内部入口兼容问题。
+
+## 1.0.0 · 本地创作与网站交付
+
+1.0 保持单页创作工具的范围：可视化布局、响应式编辑、本地图片与作品库、滚动动画编排、工程备份和静态网站 ZIP。继续由 GitHub Pages 自动部署，无需云服务器；没有账号、云端同步或代替用户发布作品。
+
+- 修复导出 CSS 优先级与最小高度重置，使字重、行高、图片高度和响应式配置实际生效。
+- 修复容器复制后的内部锚点；保留指向复制范围以外的链接。
+- 修复 WebKit 丢失自定义拖拽数据的问题；为新建、删除和预览补齐键盘焦点循环、Esc 和返回焦点，隔离弹窗快捷键。
+- 页面进入后台时写入恢复日志并尝试保存，避免仅依赖关闭页面事件；保留版本冲突与存储故障保护。
+- CI 增加 Chromium / Firefox / WebKit 三种引擎的完整浏览器验收，全部成功才部署。
+
+发布范围、升级方法和验收边界见 [1.0 发布说明](docs/RELEASE_1.0.md)。
 
 ## 0.7 · 把作品导出为网站
 
@@ -46,14 +58,14 @@ npm run preview
 
 容量限制、断点规则和迁移语义见 [0.6 使用说明](docs/EDITOR_V06.md)。
 
-## 公开体验版部署
+## GitHub Pages 自动部署
 
-推送 `main` 后，GitHub Actions 自动安装锁定依赖、运行 109 项单元测试、严格类型检查、Pages 构建和 Chromium 核心流程检查；全部通过后才部署。PR 执行相同检查，但不发布网站。
+推送 `main` 后，GitHub Actions 自动安装锁定依赖、运行 118 项单元测试、严格类型检查、Pages 构建和 Chromium / Firefox / WebKit 完整流程检查；全部通过后才部署。PR 执行相同检查，但不发布网站。
 
 ```sh
 npm run build:pages
-npx playwright install chromium
-npm run test:smoke
+npx playwright install chromium firefox webkit
+npm run test:smoke:all
 npm run preview:pages
 ```
 
@@ -128,6 +140,7 @@ Scroll Studio/
 ├── 任务要求.md                    # 保留用户原始要求
 ├── docs/
 │   ├── DEPLOYMENT.md
+│   ├── RELEASE_1.0.md
 │   ├── EDITOR_V06.md
 │   ├── WEBSITE_EXPORT.md
 │   ├── UPSTREAM_AUDIT.md
@@ -139,6 +152,8 @@ Scroll Studio/
 │   ├── favicon.svg
 │   └── images/landscape.svg
 ├── scripts/smoke.ts
+├── scripts/smoke-all.ts
+├── scripts/verify-release.ts
 ├── scripts/verify-export.ts
 ├── scripts/export-notices.ts
 ├── src/
@@ -147,6 +162,8 @@ Scroll Studio/
 │   ├── router.ts
 │   ├── animation/runtime.ts
 │   ├── core/document.ts
+│   ├── core/node-identity.ts
+│   ├── core/version.ts
 │   ├── core/assets.ts
 │   ├── core/responsive.ts
 │   ├── core/render-style.ts
@@ -158,6 +175,7 @@ Scroll Studio/
 │   ├── core/templates.ts
 │   ├── core/thumbnail.ts
 │   ├── composables/useDragDrop.ts
+│   ├── composables/useModalDialog.ts
 │   ├── composables/useTimelineDrag.ts
 │   ├── services/storage.ts
 │   ├── services/media.ts
@@ -199,7 +217,8 @@ Scroll Studio/
     ├── timeline-edit.test.ts
     ├── projects.test.ts
     ├── v06.test.ts
-    └── export.test.ts
+    ├── export.test.ts
+    └── release.test.ts
 ```
 
 业务源码仅 `.ts` / `.vue`，Vue SFC 均为 `<script setup lang="ts">`；没有自写 `.js` / `.jsx`。第三方依赖和构建输出的 JavaScript 不属于业务源文件。架构数据流和模块边界见 [ARCHITECTURE](docs/ARCHITECTURE.md)。
@@ -208,9 +227,8 @@ Scroll Studio/
 
 类型检查、生产构建、Vitest 核心测试和浏览器验收结果见 [VERIFICATION](docs/VERIFICATION.md)。测试覆盖移动、循环嵌套、历史分支、复制、持久化、坏数据和 URL 协议边界。
 
-## 下一阶段
+## 维护边界
 
-1. 先确认可视化动画编辑产品的 GSAP 授权范围，再决定公开发布路线。
-2. 0.7 功能已实现：网站 ZIP、图片与动画打包、发布前检查、示例模板；不再扩张本次功能范围。
-3. 下一轮 1.0 冻结功能，集中修复兼容性、迁移、备份恢复、可访问性和性能问题，完成正式发布验收。
-4. 多页面、云端同步、账号与多人协作不属于本次 1.0 范围；GitHub Pages 继续托管编辑器。
+1. 1.0 冻结功能，后续优先处理可复现的缺陷与依赖维护；发布不等于保证没有任何缺陷。
+2. GSAP 可视化动画工具用途许可仍需确认，不能把版本号或部署成功当成授权结论。
+3. 多页面、云端同步、账号与多人协作不属于本次 1.0 范围；GitHub Pages 继续托管编辑器。

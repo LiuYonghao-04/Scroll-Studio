@@ -22,6 +22,7 @@ import type { ProjectSummary, TemplateId } from '../types/project'
 import { getProject } from '../services/projects'
 import { MAX_DOCUMENT_BYTES } from '../core/media'
 import { useModalDialog } from '../composables/useModalDialog'
+import { APP_VERSION } from '../core/version'
 const actionDialog = ref<HTMLDialogElement>()
 useModalDialog(actionDialog)
 const store = useProjectsStore(),
@@ -131,7 +132,7 @@ onMounted(refresh)
       <main class="projects-main">
         <div class="projects-heading">
           <div>
-            <span class="project-eyebrow">YOUR CREATIVE SPACE / 0.7</span>
+            <span class="project-eyebrow">YOUR CREATIVE SPACE / {{ APP_VERSION }}</span>
             <h1>每个想法，都有自己的位置。</h1>
             <p>继续打磨正在生长的作品，或开始一次新的探索。</p>
           </div>

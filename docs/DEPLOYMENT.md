@@ -1,4 +1,4 @@
-# GitHub Pages 公开体验版
+# GitHub Pages 部署
 
 目标地址：<https://LiuYonghao-04.github.io/Scroll-Studio/>。
 
@@ -8,7 +8,7 @@
 
 1. 仓库 Settings → Pages → Source 选择 GitHub Actions（也可使用拥有管理权限的 API 设置 `build_type: workflow`）。
 2. 推送 main，或在 Actions 手动运行 Verify and deploy GitHub Pages。
-3. build job 顺序运行 `npm ci`、`npm test`、`npm run build:pages`、安装 Chromium、`npm run test:smoke`。0.6 包含断点继承、真实图片上传 / 重命名 / 使用 / 删除保护 / 撤销、区块和动画预设、带图备份的恢复检查。
+3. build job 顺序运行 `npm ci`、`npm test`、`npm run build:pages`、安装 Chromium / Firefox / WebKit、`npm run test:smoke:all`。每种引擎执行完整流程，其中任何一项失败都不部署。
 4. 检查通过后上传 dist，deploy job 使用 Pages 和 OIDC 权限发布。PR 仅检查，不部署。
 
 Actions 固定到已核验的官方 action commit；Node 使用 22 系列。CI 失败不会发布失败构建，原有线上版本仍保留。
@@ -21,18 +21,18 @@ Actions 固定到已核验的官方 action commit；Node 使用 22 系列。CI �
 npm ci
 npm test
 npm run build:pages
-npx playwright install chromium
-npm run test:smoke
+npx playwright install chromium firefox webkit
+npm run test:smoke:all
 npm run preview:pages
 ```
 
-预览地址为 `http://127.0.0.1:4173/Scroll-Studio/`。冒烟脚本自行管理服务，不要同时占用 4173 端口。Linux 如缺浏览器系统库，使用 `npx playwright install --with-deps chromium`。
+预览地址为 `http://127.0.0.1:4173/Scroll-Studio/`。冒烟脚本自行管理服务，不要同时占用 4173 端口。Linux 如缺浏览器系统库，使用 `npx playwright install --with-deps chromium firefox webkit`。单独检查某种引擎时设置 `SMOKE_BROWSER`（chromium / firefox / webkit）后运行 `npm run test:smoke`，默认 Chromium；输出目录按引擎区分。
 
 使用 `SMOKE_BASE_URL` 可以对真实部署执行同一组检查；脚本使用全新的浏览器上下文，创建的数据仅存在该隔离上下文，不会改动其他访问者的作品。
 
 ```powershell
 $env:SMOKE_BASE_URL = 'https://LiuYonghao-04.github.io/Scroll-Studio/'
-npm run test:smoke
+npm run test:smoke:all
 Remove-Item Env:SMOKE_BASE_URL
 ```
 
@@ -52,4 +52,4 @@ Remove-Item Env:SMOKE_BASE_URL
 
 ## 验证范围
 
-自动检查使用 Chromium，阻断 Google Fonts 请求以覆盖字体服务不可用的情况。手机检查是 390px 视口与界面溢出检查，不代表真实手机触摸拖拽或 Safari / Firefox 已验证。许可说明保留在 README 与上游审计文档，部署成功不代表用途授权已获确认。
+自动检查使用 Playwright 的 Chromium / Firefox / WebKit，阻断 Google Fonts 请求以覆盖字体服务不可用的情况。手机检查是 390px 视口与界面溢出检查，不代表真实手机触摸拖拽或 Safari / iOS 已认证。许可说明保留在 README 与上游审计文档，部署成功不代表用途授权已获确认。1.0 完整验收范围见 [发布说明](RELEASE_1.0.md)。

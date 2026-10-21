@@ -47,6 +47,7 @@ import { useDragDrop } from '../composables/useDragDrop'
 import { parseDocument } from '../core/document'
 import { deviceWidths } from '../types/editor'
 import { MAX_DOCUMENT_BYTES } from '../core/media'
+import { APP_VERSION } from '../core/version'
 const store = useEditorStore()
 const projects = useProjectsStore(),
   route = useRoute(),
@@ -451,7 +452,7 @@ onBeforeUnmount(() => {
               ><Check :size="12" />{{
                 store.recoveryRequired ? '自动保存已暂停 · 请恢复或手动保存' : '自动保存至本机'
               }}</span
-            ><span>Vue 3 + TypeScript <i></i>Scroll Studio 0.7</span>
+            ><span>Vue 3 + TypeScript <i></i>Scroll Studio {{ APP_VERSION }}</span>
           </footer>
         </main>
         <PropertyPanel @media="side = 'library'" />

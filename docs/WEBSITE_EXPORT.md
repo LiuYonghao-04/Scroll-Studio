@@ -43,7 +43,7 @@ project.json 保留原工程：原本使用外部 URL 的图片在重新导入�
 
 HTML 文本、属性及内嵌 JSON 分别安全转义，CSS 仅由已校验的数值 / 枚举生成；不执行用户 HTML 或 JavaScript。首屏正文直接在 HTML 中，不等待 Vue 或编辑器初始化。
 
-构建先生成独立运行文件和许可说明到 public/export-runtime（Git 忽略），再构建编辑器；CI 也运行同样流程。开发时首次导出前运行 `npm run build:runtime`，修改动画运行逻辑后重新生成。源码始终为 TypeScript，runtime.js 是构建产物。
+构建先生成独立运行文件和许可说明到 public/export-runtime（Git 忽略），再构建编辑器；CI 也运行同样流程。1.0 起 `npm run dev` 启动前也会自动生成，修改动画运行逻辑后重新启动或运行 `npm run build:runtime`。源码始终为 TypeScript，runtime.js 是构建产物。
 
 ## 许可与范围
 
