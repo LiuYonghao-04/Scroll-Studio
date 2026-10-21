@@ -1,14 +1,17 @@
 {
   "name": "scroll-studio",
   "private": true,
-  "version": "0.4.0",
+  "version": "0.5.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "typecheck": "vue-tsc --noEmit",
     "build": "npm run typecheck && vite build",
+    "build:pages": "npm run typecheck && vite build --base=/Scroll-Studio/",
     "preview": "vite preview --host 127.0.0.1",
-    "test": "vitest run"
+    "preview:pages": "vite preview --host 127.0.0.1 --base=/Scroll-Studio/",
+    "test": "vitest run",
+    "test:smoke": "node scripts/smoke.ts"
   },
   "dependencies": {
     "@lucide/vue": "^1.56.0",
@@ -22,6 +25,7 @@
     "@vitejs/plugin-vue": "^6.0.10",
     "fake-indexeddb": "^6.2.6",
     "jsdom": "^29.1.1",
+    "playwright": "1.64.1",
     "prettier": "^3.9.10",
     "typescript": "~5.9.3",
     "vite": "^8.3.4",

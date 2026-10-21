@@ -27,6 +27,7 @@ import ComponentLibrary from '../components/editor/ComponentLibrary.vue'
 import PropertyPanel from '../components/editor/PropertyPanel.vue'
 import NodeRenderer from '../components/editor/NodeRenderer.vue'
 import PreviewOverlay from '../components/editor/PreviewOverlay.vue'
+import QuickStartGuide from '../components/editor/QuickStartGuide.vue'
 import TimelinePanel from '../components/editor/TimelinePanel.vue'
 import ProjectCreateDialog from '../components/projects/ProjectCreateDialog.vue'
 import { useProjectsStore } from '../stores/projects'
@@ -271,6 +272,7 @@ onBeforeUnmount(() => {
           ><span role="status">{{ store.status }}</span>
         </div>
         <div class="toolbar-group">
+          <QuickStartGuide />
           <button
             class="icon-button"
             aria-label="撤销"
@@ -388,7 +390,7 @@ onBeforeUnmount(() => {
               ><Check :size="12" />{{
                 store.recoveryRequired ? '自动保存已暂停 · 请恢复或手动保存' : '自动保存至本机'
               }}</span
-            ><span>Vue 3 + TypeScript <i></i>Scroll Studio 0.4</span>
+            ><span>Vue 3 + TypeScript <i></i>Scroll Studio 0.5</span>
           </footer>
         </main>
         <PropertyPanel />

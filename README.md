@@ -4,6 +4,8 @@
 
 代码仓库：[LiuYonghao-04/Scroll-Studio](https://github.com/LiuYonghao-04/Scroll-Studio)。
 
+公开体验地址：[Scroll Studio](https://LiuYonghao-04.github.io/Scroll-Studio/)。作品仅保存在访问者自己的浏览器里，不会上传云端；清理数据或换设备前请导出 JSON 备份。
+
 ## 运行
 
 已在 Node.js `22.18.0` / npm `10.9.3` 下验证。建议使用 Node 22 LTS（>=22.12）。
@@ -13,7 +15,7 @@ npm ci
 npm run dev
 ```
 
-默认地址 `http://127.0.0.1:5173/`；首页 `/#/`，作品库 `/#/projects`，独立作品编辑器 `/#/editor/:projectId`，内部预览 `/#/render`。旧入口 `/#/editor` 会打开最近作品；没有作品时创建初始画布。如端口占用，以 Vite 输出地址为准。Hash 路由便于静态托管；当前资源按域名根路径组织。
+默认地址 `http://127.0.0.1:5173/`；首页 `/#/`，作品库 `/#/projects`，独立作品编辑器 `/#/editor/:projectId`，内部预览 `/#/render`。旧入口 `/#/editor` 会打开最近作品；没有作品时创建初始画布。如端口占用，以 Vite 输出地址为准。Hash 路由便于静态托管；资源与预览路径跟随 Vite BASE_URL，支持 GitHub Pages 子目录。
 
 ```sh
 npm run typecheck
@@ -22,7 +24,22 @@ npm run build
 npm run preview
 ```
 
-生产产物在 `dist/`。源码已提交 GitHub，尚未部署线上网站、接入账号或开通后端服务。使用 `npm ci` 保持 lockfile 对应版本；TypeScript 固定在 5.9 系列，避开本次发现的 TS 7 与 vue-tsc 内部入口兼容问题。
+生产产物在 `dist/`。GitHub Pages 通过 Actions 部署公开体验版；无需账号或后端服务。使用 `npm ci` 保持 lockfile 对应版本；TypeScript 固定在 5.9 系列，避开本次发现的 TS 7 与 vue-tsc 内部入口兼容问题。
+
+## 公开体验版部署 · 0.5
+
+推送 `main` 后，GitHub Actions 自动安装锁定依赖、运行 70 项单元测试、严格类型检查、Pages 构建和 Chromium 核心流程检查；全部通过后才部署。PR 执行相同检查，但不发布网站。
+
+```sh
+npm run build:pages
+npx playwright install chromium
+npm run test:smoke
+npm run preview:pages
+```
+
+`test:smoke` 自行启动并关闭本地生产预览服务，检查首页、首次使用指南、模板创建、编辑、撤销重做、保存与刷新恢复、子目录 iframe / 图片、存储失败阻止离开及重试、错误 JSON 导入、备份往返和手机作品库。截图与下载文件输出到 `output/playwright/pages-smoke/`（不提交）。
+
+首次启用 Pages、回滚、自定义域名与本地数据迁移说明见 [部署指南](docs/DEPLOYMENT.md)。公开可访问不等于 GSAP 用途许可已获确认，许可边界仍见下文说明。
 
 ## 底座选型
 
@@ -34,6 +51,7 @@ npm run preview
 
 ## 已实现
 
+- 0.5 公开体验准备：GitHub Pages 自动检查与部署、子目录资源及预览兼容、首次使用指南、常驻本地存储与备份说明、生产浏览器流程检查。指南使用原生 dialog，支持键盘焦点约束、Esc 关闭和关闭后再次查看。
 - 中文 SaaS 首页：非对称 Hero、原创编辑器示意图、创作流程、滚动动画实验、设计灵感画廊、行动入口及手机导航。画廊明确标注为灵感展示，不宣称可一键加载模板。
 - GSAP 入场、文字淡入、视差、ScrollTrigger 时间线；响应 `prefers-reduced-motion`，切换路由清理动画。
 - 三栏编辑器：组件库 / 图层树、画布、属性与动画面板；小屏侧栏可切换。
@@ -64,7 +82,7 @@ npm run preview
 - 没有自由绝对坐标拖放、画布缩放手柄、网格吸附或任意组件尺寸编辑；位置由布局顺序、容器和间距决定。
 - 没有富文本、文件上传、媒体管理、断点独立样式；图片目前编辑 URL。
 - 没有 pin、多场景时间轴、循环/yoyo、贝塞尔自定义曲线、拖动时自动横向滚动或多个轨道同时选中；精确数值也可在右侧面板编辑。
-- 没有 HTML 导出、线上页面发布、账号、后端、多人协作、支付、订阅或云端同步。
+- 没有 HTML 导出、用户作品的独立线上发布、账号、后端、多人协作、支付、订阅或云端同步。GitHub Pages 托管的是编辑器体验网站，不会自动托管访问者的作品。
 - 桌面 HTML Drag and Drop 是首选；手机端使用点击添加与排序按钮，不承诺原生触摸拖拽兼容。
 - 历史最多 60 步，仅在当前作品编辑会话保留；刷新或切换作品清空 undo 堆栈。
 - 本地存储与浏览器/域名绑定，浏览器清理存储会删除草稿；存储故障时可导出 JSON 备份。

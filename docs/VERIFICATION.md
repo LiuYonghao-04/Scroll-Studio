@@ -1,6 +1,16 @@
 # 验收记录
 
-最终检查日期：2026-10-18。开发与验证环境：Windows、Node.js 22.18.0、npm 10.9.3、Playwright Chromium。没有声称已测试 Safari、Firefox 或真实手机触摸拖拽。
+## 公开体验部署准备 · 0.5（2026-10-21）
+
+- `npm test`：4 个文件，70 项测试通过。
+- `npm run build:pages`：严格 TypeScript 检查与 `/Scroll-Studio/` 子目录生产构建通过。
+- `npm run test:smoke`：真实 Chromium 验证首次指南（关闭后不重复、问号重开、Esc）、模板创建、修改、撤销 / 重做、保存与刷新恢复、预览 iframe 和图片路径、手机预览、时间轴模式切换、模拟 quota 故障后的导航保护与重试、错误 JSON 不污染作品、导出 / 导入、手机作品库和引导无横向溢出；无运行异常或同源资源 HTTP 错误。
+- 阻断 Google Fonts 后完成全部操作，字体加载不作为核心交互的前置条件。
+- 桌面与手机引导截图已人工检查；文件位于 `output/playwright/pages-smoke/`。
+- `npm install` 审计结果：0 vulnerabilities（当次锁定依赖检查结果，不代表长期安全保证）。
+- 自动流程纳入 GitHub Actions，PR 检查与 main 发布使用相同的生产构建和浏览器检查。在线部署结果请以 Actions 与正式网址为准。
+
+以下 0.4 及更早阶段检查日期：2026-10-18。开发与验证环境：Windows、Node.js 22.18.0、npm 10.9.3、Playwright Chromium。没有声称已测试 Safari、Firefox 或真实手机触摸拖拽。
 
 ## 自动检查
 

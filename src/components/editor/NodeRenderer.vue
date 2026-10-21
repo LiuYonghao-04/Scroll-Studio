@@ -4,6 +4,7 @@ import type { CSSProperties } from 'vue'
 import { GripVertical } from '@lucide/vue'
 import type { PageNode } from '../../types/editor'
 import { safeUrl } from '../../core/document'
+import { imageSrc, landscapeSrc } from '../../core/assets'
 import { useEditorStore } from '../../stores/editor'
 import { useDragDrop } from '../../composables/useDragDrop'
 const props = defineProps<{
@@ -53,6 +54,11 @@ function select(event: MouseEvent) {
   event.stopPropagation()
   event.preventDefault()
   store.selectedId = props.node.id
+}
+function imageError(event: Event) {
+  const image = event.target as HTMLImageElement
+  // Do not retry forever if the bundled fallback itself cannot be loaded.
+  if (image.src !== new URL(landscapeSrc, location.href).href) image.src = landscapeSrc
 }
 function followLink(event: MouseEvent) {
   if (props.editing) {
@@ -119,10 +125,10 @@ function followLink(event: MouseEvent) {
     <p v-else-if="node.kind === 'text'">{{ node.content }}</p>
     <img
       v-else-if="node.kind === 'image'"
-      :src="safeUrl(node.src, true) || '/images/landscape.svg'"
+      :src="imageSrc(node.src)"
       :alt="node.content"
       draggable="false"
-      @error="($event.target as HTMLImageElement).src = '/images/landscape.svg'"
+      @error="imageError"
     />
     <a
       v-else

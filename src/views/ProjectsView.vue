@@ -16,6 +16,7 @@ import {
 } from '@lucide/vue'
 import BrandMark from '../components/ui/BrandMark.vue'
 import ProjectCreateDialog from '../components/projects/ProjectCreateDialog.vue'
+import QuickStartGuide from '../components/editor/QuickStartGuide.vue'
 import { useProjectsStore } from '../stores/projects'
 import type { ProjectRecord, TemplateId } from '../types/project'
 const store = useProjectsStore(),
@@ -108,12 +109,14 @@ onMounted(refresh)
   <div class="projects-page">
     <div :inert="creating || !!operation">
       <header class="projects-nav">
-        <BrandMark /><RouterLink to="/">返回首页<ArrowUpRight :size="14" /></RouterLink>
+        <BrandMark /><QuickStartGuide /><RouterLink to="/"
+          >返回首页<ArrowUpRight :size="14"
+        /></RouterLink>
       </header>
       <main class="projects-main">
         <div class="projects-heading">
           <div>
-            <span class="project-eyebrow">YOUR CREATIVE SPACE / 0.4</span>
+            <span class="project-eyebrow">YOUR CREATIVE SPACE / 0.5</span>
             <h1>每个想法，都有自己的位置。</h1>
             <p>继续打磨正在生长的作品，或开始一次新的探索。</p>
           </div>
@@ -150,6 +153,10 @@ onMounted(refresh)
             <RefreshCw :size="16" />
           </button>
         </div>
+        <p class="project-notice">
+          作品仅保存在当前设备的浏览器中，不会上传云端。清理浏览器数据前请导出 JSON
+          备份；换设备可通过「导入作品」恢复。
+        </p>
         <p v-if="store.warning" class="project-notice" role="status">{{ store.warning }}</p>
         <div v-if="store.error || error" class="project-form-error" role="alert">
           {{ store.error || error

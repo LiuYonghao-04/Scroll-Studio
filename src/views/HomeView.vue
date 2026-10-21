@@ -20,6 +20,7 @@ import {
 } from '@lucide/vue'
 import BrandMark from '../components/ui/BrandMark.vue'
 import StudioPreview from '../components/home/StudioPreview.vue'
+import { landscapeSrc } from '../core/assets'
 gsap.registerPlugin(ScrollTrigger)
 const root = ref<HTMLElement>()
 const navOpen = ref(false)
@@ -272,7 +273,7 @@ onBeforeUnmount(() => media?.revert())
             ><div class="gallery-image landscape-card">
               <img
                 class="gallery-art"
-                src="/images/landscape.svg"
+                :src="landscapeSrc"
                 alt="原创绿色山丘插画，作为自然主题网站设计灵感"
               />
               <div class="gallery-overlay">

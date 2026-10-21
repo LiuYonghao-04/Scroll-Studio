@@ -3,6 +3,7 @@ import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Monitor, Tablet, Smartphone, X, RotateCcw, Play, Pause } from '@lucide/vue'
 import { useEditorStore } from '../../stores/editor'
 import { clone } from '../../core/document'
+import { previewSrc } from '../../core/assets'
 import { deviceWidths, type Device } from '../../types/editor'
 import { compileSequence } from '../../core/motion'
 import type { PlaybackState, PreviewMode } from '../../animation/runtime'
@@ -158,7 +159,7 @@ onBeforeUnmount(() => window.removeEventListener('message', receive))
       <iframe
         ref="frame"
         title="独立页面预览"
-        src="/#/render"
+        :src="previewSrc"
         :style="{ width: `${deviceWidths[device]}px` }"
         @load="send"
       ></iframe>

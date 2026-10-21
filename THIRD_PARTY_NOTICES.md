@@ -12,6 +12,8 @@ Scroll Studio 的应用源码、布局、图形与示例文案为本次独立实
 
 构建与测试工具按各自包内许可使用，不将依赖的编译 JS 视为自行编写的业务 JS。
 
+0.5 的 `playwright` 为开发测试依赖，使用包内 Apache-2.0 许可；只用于本地与 CI 浏览器检查，不进入网站运行时。
+
 0.4 的 `fake-indexeddb` 为开发测试依赖，使用包内 Apache-2.0 许可；仅用于验证 IndexedDB 事务，不进入产品运行时。作品模板、SVG 布局缩略图与模板文案为本项目自行编写。
 
 `public/images/landscape.svg`、favicon、品牌几何标志和首页 CSS 图形为本项目原创。DM Sans 与 Noto Sans SC 通过 Google Fonts CSS 加载；采用 Google Fonts 分发的开放字体，离线或网络不可用时回退系统字体。未从第三方图库复制图片，也未使用上游品牌素材。
