@@ -28,6 +28,7 @@ import PropertyPanel from '../components/editor/PropertyPanel.vue'
 import NodeRenderer from '../components/editor/NodeRenderer.vue'
 import PreviewOverlay from '../components/editor/PreviewOverlay.vue'
 import QuickStartGuide from '../components/editor/QuickStartGuide.vue'
+import ExportDialog from '../components/editor/ExportDialog.vue'
 import TimelinePanel from '../components/editor/TimelinePanel.vue'
 import ProjectCreateDialog from '../components/projects/ProjectCreateDialog.vue'
 import { useProjectsStore } from '../stores/projects'
@@ -59,6 +60,7 @@ const preview = ref(false)
 const previewMode = ref<PreviewMode>('scroll')
 const menu = ref(false)
 const newPage = ref(false)
+const exporting = ref(false)
 const side = ref<'library' | 'properties' | null>(null)
 const stage = ref<HTMLElement>()
 const stageWidth = ref(900)
@@ -212,6 +214,10 @@ function openPreview(mode: PreviewMode = 'scroll') {
   previewMode.value = mode
   preview.value = true
 }
+function openExport() {
+  menu.value = false
+  exporting.value = true
+}
 function inspectMotion() {
   side.value = 'properties'
 }
@@ -261,6 +267,7 @@ onBeforeUnmount(() => {
               ><button @click="saveFromMenu"><Save :size="15" />保存当前页面</button
               ><button @click="openNewPage"><FilePlus2 :size="15" />新建作品</button
               ><button @click="exportJson"><Download :size="15" />导出页面 JSON</button
+              ><button @click="openExport"><Download :size="15" />导出网站 ZIP</button
               ><button @click="file?.click()"><Upload :size="15" />导入页面 JSON</button
               ><RouterLink to="/projects"><FolderOpen :size="15" />我的作品</RouterLink
               ><RouterLink to="/"><ArrowLeft :size="15" />返回首页</RouterLink>
@@ -274,6 +281,14 @@ onBeforeUnmount(() => {
         </div>
         <div class="toolbar-group">
           <QuickStartGuide />
+          <button
+            class="icon-button"
+            aria-label="导出网站 ZIP"
+            title="导出网站 ZIP"
+            @click="openExport"
+          >
+            <Download :size="18" />
+          </button>
           <button
             class="icon-button"
             aria-label="撤销"
@@ -403,6 +418,7 @@ onBeforeUnmount(() => {
       <input ref="file" type="file" accept="application/json,.json" hidden @change="importJson" />
     </div>
     <PreviewOverlay v-if="preview" :initial-mode="previewMode" @close="closePreview" />
+    <ExportDialog v-if="exporting" @close="exporting = false" />
     <ProjectCreateDialog v-if="newPage" :create="createNewProject" @close="newPage = false" />
     <div v-if="initializing || routeError" class="project-open-overlay">
       <div role="status">

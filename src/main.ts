@@ -7,4 +7,5 @@ import './styles/editor-motion.css'
 import './styles/projects.css'
 import './styles/editor-v06.css'
 import './export/page.css'
+import './styles/export.css'
 createApp(App).use(createPinia()).use(router).mount('#app')

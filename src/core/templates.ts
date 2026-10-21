@@ -2,6 +2,7 @@ import { clone, createNode, newDocument, parseDocument } from './document'
 import { flattenNodes } from './motion'
 import type { NodeKind, PageDocument, PageNode } from '../types/editor'
 import type { TemplateId } from '../types/project'
+import { createShowcase } from './showcase'
 
 export const templates: { id: TemplateId; name: string; subtitle: string; color: string }[] = [
   { id: 'blank', name: '空白画布', subtitle: '从一个想法开始，自由搭建。', color: '#edf0e7' },
@@ -13,6 +14,18 @@ export const templates: { id: TemplateId; name: string; subtitle: string; color:
   },
   { id: 'product', name: '产品介绍', subtitle: '产品主张、功能介绍与行动按钮。', color: '#e9dfd0' },
   { id: 'story', name: '滚动叙事', subtitle: '三个章节，逐步展开你的故事。', color: '#d8e5df' },
+  {
+    id: 'studio',
+    name: '创意工作室',
+    subtitle: '品牌主张、服务介绍与图文故事。',
+    color: '#dce4cf',
+  },
+  {
+    id: 'launch',
+    name: '新品发布页',
+    subtitle: '产品开场、功能特性与共享动画。',
+    color: '#e9d8bb',
+  },
 ]
 function content(kind: NodeKind, text: string): PageNode {
   const n = createNode(kind)
@@ -33,6 +46,7 @@ function section(name: string, title: string, text: string, background: string):
   return n
 }
 export function createTemplate(id: TemplateId): PageDocument {
+  if (id === 'studio' || id === 'launch') return createShowcase(id)
   const doc = newDocument()
   doc.name = templates.find((t) => t.id === id)?.name ?? '未命名作品'
   if (id === 'blank') return doc

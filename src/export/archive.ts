@@ -6,13 +6,37 @@ import { compileHtml } from './compiler'
 import { preflight } from './preflight'
 import type { PageDocument } from '../types/editor'
 
-export type ExportLoader = (url: string) => Promise<Uint8Array>
-async function load(url: string): Promise<Uint8Array> {
-  const response = await fetch(url, { credentials: 'omit', signal: AbortSignal.timeout(15_000) })
+export type ExportLoader = (url: string, signal?: AbortSignal) => Promise<Uint8Array>
+async function load(url: string, signal?: AbortSignal): Promise<Uint8Array> {
+  const response = await fetch(url, {
+    credentials: 'omit',
+    signal: AbortSignal.any([AbortSignal.timeout(15_000), ...(signal ? [signal] : [])]),
+  })
   if (!response.ok) throw new Error(`资源读取失败（${response.status}）：${url}`)
-  const bytes = new Uint8Array(await response.arrayBuffer())
-  if (bytes.length > 8_000_000)
-    throw new Error('单个外部资源超过 8 MB，请先上传经过压缩的本地图片。')
+  const reader = response.body?.getReader()
+  if (!reader) throw new Error('浏览器无法读取导出资源，请重试。')
+  const chunks: Uint8Array[] = []
+  let total = 0
+  try {
+    while (true) {
+      const next = await reader.read()
+      if (next.done) break
+      total += next.value.length
+      if (total > 8_000_000) {
+        await reader.cancel()
+        throw new Error('单个外部资源超过 8 MB，请先上传经过压缩的本地图片。')
+      }
+      chunks.push(next.value)
+    }
+  } finally {
+    reader.releaseLock()
+  }
+  const bytes = new Uint8Array(total)
+  let offset = 0
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset)
+    offset += chunk.length
+  }
   return bytes
 }
 const decode = (data: string) =>
@@ -21,7 +45,12 @@ export async function buildArchive(
   input: PageDocument,
   loader: ExportLoader = load,
   progress: (text: string) => void = () => {},
+  signal?: AbortSignal,
 ): Promise<Uint8Array> {
+  const resource = (url: string) => {
+    signal?.throwIfAborted()
+    return loader(url, signal)
+  }
   const original = parseDocument(input),
     doc = clone(original)
   const errors = preflight(doc).filter((issue) => issue.level === 'error')
@@ -29,24 +58,27 @@ export async function buildArchive(
   const files: Record<string, Uint8Array> = {}
   progress('正在准备动画运行资源…')
   const base = import.meta.env.BASE_URL
-  files['runtime.js'] = await loader(`${base}export-runtime/runtime.js`)
-  files['images/landscape.svg'] = await loader(`${base}images/landscape.svg`)
-  const notices = await loader(`${base}export-runtime/THIRD_PARTY_NOTICES.txt`)
+  files['runtime.js'] = await resource(`${base}export-runtime/runtime.js`)
+  files['images/landscape.svg'] = await resource(`${base}images/landscape.svg`)
+  const notices = await resource(`${base}export-runtime/THIRD_PARTY_NOTICES.txt`)
   files['THIRD_PARTY_NOTICES.txt'] = notices
   for (const asset of doc.assets)
     files[`media/${asset.id}.${asset.mime === 'image/jpeg' ? 'jpg' : asset.mime.split('/')[1]}`] =
       decode(asset.dataUrl)
   const external = new Map<string, string>()
   for (const node of flattenNodes(doc.nodes).filter((node) => node.kind === 'image')) {
+    signal?.throwIfAborted()
     progress(`正在打包图片：${node.name}`)
     if (node.src.startsWith('asset:')) {
       const asset = doc.assets.find((asset) => `asset:${asset.id}` === node.src)!
       node.src = `./media/${asset.id}.${asset.mime === 'image/jpeg' ? 'jpg' : asset.mime.split('/')[1]}`
     } else if (node.src !== '/images/landscape.svg') {
       if (!external.has(node.src)) {
+        if (external.size >= 20)
+          throw new Error('单次导出最多打包 20 个外部图片地址，请减少图片后重试。')
         let image: Awaited<ReturnType<typeof readImage>>
         try {
-          const bytes = await loader(node.src)
+          const bytes = await resource(node.src)
           const mime =
             bytes[0] === 0x89
               ? 'image/png'
@@ -57,10 +89,13 @@ export async function buildArchive(
                   : ''
           image = await readImage(new File([bytes as BlobPart], 'external-image', { type: mime }))
         } catch {
+          signal?.throwIfAborted()
           throw new Error(`无法打包「${node.name}」的图片。请先在素材库上传该图片，再重试导出。`)
         }
         const path = `media/${image.id}.${image.mime === 'image/jpeg' ? 'jpg' : image.mime.split('/')[1]}`
         files[path] = decode(image.dataUrl)
+        if (Object.values(files).reduce((size, bytes) => size + bytes.length, 0) > 24_000_000)
+          throw new Error('图片总量过大，请减少素材后重试。')
         external.set(node.src, `./${path}`)
       }
       node.src = external.get(node.src)!
@@ -77,5 +112,6 @@ export async function buildArchive(
   if (Object.values(files).reduce((size, bytes) => size + bytes.length, 0) > 40_000_000)
     throw new Error('导出包超过 40 MB，请减少素材后重试。')
   progress('正在生成 ZIP…')
+  signal?.throwIfAborted()
   return zipSync(files, { level: 0 })
 }

@@ -3,6 +3,7 @@ import { mkdir, readFile } from 'node:fs/promises'
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { chromium, type Page } from 'playwright'
+import { verifyWebsiteExport } from './verify-export.ts'
 
 const base = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:4173/Scroll-Studio/'
 const output = 'output/playwright/pages-smoke'
@@ -199,6 +200,7 @@ try {
   )
   await imagesLoaded(page)
   await verifyV06()
+  await verifyWebsiteExport(page, browser, output)
   await page.getByRole('button', { name: '预览', exact: true }).click()
   const frame = page.frameLocator('iframe[title="独立页面预览"]')
   await frame.getByRole('heading', { name: '公开体验版自动验收', exact: true }).waitFor()

@@ -1,5 +1,5 @@
 import type { PageDocument } from './editor'
-export type TemplateId = 'blank' | 'portfolio' | 'product' | 'story'
+export type TemplateId = 'blank' | 'portfolio' | 'product' | 'story' | 'studio' | 'launch'
 export interface ProjectRecord {
   id: string
   document: PageDocument
