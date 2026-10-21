@@ -1,5 +1,6 @@
 node_modules/
 dist/
+public/export-runtime/
 output/
 .playwright-cli/
 *.local

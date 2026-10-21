@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "typecheck": "vue-tsc --noEmit",
-    "build": "npm run typecheck && vite build",
-    "build:pages": "npm run typecheck && vite build --base=/Scroll-Studio/",
+    "build:runtime": "vite build --config vite.export.config.ts && node scripts/export-notices.ts",
+    "build": "npm run typecheck && npm run build:runtime && vite build",
+    "build:pages": "npm run typecheck && npm run build:runtime && vite build --base=/Scroll-Studio/",
     "preview": "vite preview --host 127.0.0.1",
     "preview:pages": "vite preview --host 127.0.0.1 --base=/Scroll-Studio/",
     "test": "vitest run",
@@ -15,6 +16,7 @@
   },
   "dependencies": {
     "@lucide/vue": "^1.56.0",
+    "fflate": "0.8.3",
     "gsap": "^3.15.0",
     "pinia": "^4.0.3",
     "vue": "^3.5.44",
