@@ -8,7 +8,7 @@
 
 1. 仓库 Settings → Pages → Source 选择 GitHub Actions（也可使用拥有管理权限的 API 设置 `build_type: workflow`）。
 2. 推送 main，或在 Actions 手动运行 Verify and deploy GitHub Pages。
-3. build job 顺序运行 `npm ci`、`npm test`、`npm run build:pages`、安装 Chromium、`npm run test:smoke`。
+3. build job 顺序运行 `npm ci`、`npm test`、`npm run build:pages`、安装 Chromium、`npm run test:smoke`。0.6 包含断点继承、真实图片上传 / 重命名 / 使用 / 删除保护 / 撤销、区块和动画预设、带图备份的恢复检查。
 4. 检查通过后上传 dist，deploy job 使用 Pages 和 OIDC 权限发布。PR 仅检查，不部署。
 
 Actions 固定到已核验的官方 action commit；Node 使用 22 系列。CI 失败不会发布失败构建，原有线上版本仍保留。

@@ -45,7 +45,7 @@ describe('document version migration', () => {
     const raw = JSON.stringify(old)
     localStorage.setItem(STORAGE_KEY, raw)
     const migrated = loadDocument()!
-    expect(migrated.version).toBe(2)
+    expect(migrated.version).toBe(3)
     expect(migrated.nodes[0]!.children[1]!.id).toBe(old.nodes[0]!.children[1]!.id)
     const animation = migrated.nodes[0]!.children[1]!.animation
     expect(animation).toMatchObject({

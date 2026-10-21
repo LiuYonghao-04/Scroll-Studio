@@ -12,3 +12,6 @@ export interface ProjectJournal {
   document: PageDocument
   revision: number
 }
+export type ProjectSummary = Omit<ProjectRecord, 'document'> & {
+  document: Pick<PageDocument, 'name'>
+}

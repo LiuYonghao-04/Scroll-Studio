@@ -1,0 +1,126 @@
+.library .panel-tabs {
+  gap: 12px;
+  padding: 0 12px;
+}
+.breakpoint-editor {
+  padding: 12px;
+  background: #f0f4e9;
+  border-radius: 6px;
+}
+.breakpoint-editor > span {
+  font-size: 10px;
+  color: #5b7050;
+}
+.breakpoint-switch {
+  display: flex;
+  gap: 4px;
+  margin: 10px 0;
+}
+.breakpoint-switch button {
+  flex: 1;
+  padding: 7px 4px;
+  border: 1px solid #dce4d2;
+  border-radius: 4px;
+  font-size: 11px;
+}
+.breakpoint-switch button[aria-pressed='true'] {
+  background: #26352b;
+  color: #fff;
+  border-color: #26352b;
+}
+.breakpoint-editor p {
+  font-size: 10px;
+  line-height: 1.8;
+  color: #65765b;
+  margin-bottom: 8px;
+}
+.block-presets {
+  display: grid;
+  gap: 8px;
+  padding: 0 14px 20px;
+}
+.block-presets > button {
+  text-align: left;
+  border: 1px solid #e0e6d7;
+  background: #fafbf7;
+  padding: 12px;
+  border-radius: 5px;
+}
+.block-presets > button:hover {
+  background: #eef4e5;
+}
+.block-presets strong {
+  font-size: 11px;
+  font-weight: 500;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.block-presets small {
+  display: block;
+  margin-top: 6px;
+  line-height: 1.6;
+  color: #839277;
+  font-size: 10px;
+}
+.media-library {
+  padding-bottom: 24px;
+}
+.media-upload {
+  margin: 16px 14px 10px;
+  width: calc(100% - 28px);
+}
+.media-capacity {
+  margin: 0 14px 18px;
+  font-size: 9px;
+  color: #758568;
+  line-height: 1.8;
+}
+.media-error {
+  margin: 10px 14px;
+  color: #9d543b;
+  background: #fff0e5;
+  padding: 10px;
+  font-size: 11px;
+  line-height: 1.7;
+}
+.media-card {
+  margin: 12px 14px;
+  border: 1px solid #e0e6d7;
+  padding: 10px;
+  border-radius: 5px;
+  background: #fafbf7;
+}
+.media-card > img {
+  display: block;
+  width: 100%;
+  height: 110px;
+  object-fit: contain;
+  background: #edf0e8;
+  margin-bottom: 10px;
+}
+.media-card > input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #dce4d2;
+  padding: 7px;
+  border-radius: 3px;
+  font-size: 11px;
+  background: #fff;
+}
+.media-card > small {
+  display: block;
+  color: #758568;
+  font-size: 9px;
+  margin: 8px 0;
+  line-height: 1.7;
+}
+.media-card > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.motion-presets {
+  flex-wrap: wrap;
+}

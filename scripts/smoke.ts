@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdir } from 'node:fs/promises'
+import { mkdir, readFile } from 'node:fs/promises'
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { chromium, type Page } from 'playwright'
@@ -54,6 +54,102 @@ async function imagesLoaded(target: Page) {
     [...document.images].every((image) => image.complete && image.naturalWidth > 0),
   )
 }
+async function verifyV06() {
+  const heading = page.getByRole('heading', { name: '公开体验版自动验收', exact: true })
+  const wrapper = heading.locator('..')
+  await heading.click()
+  const size = page.getByRole('spinbutton', { name: '字号 · px', exact: true })
+  await page.getByRole('button', { name: 'mobile画布', exact: true }).click()
+  await size.fill('28')
+  await size.press('Tab')
+  await page.getByRole('spinbutton', { name: '边框宽度 · px', exact: true }).fill('2')
+  await page.getByRole('spinbutton', { name: '边框宽度 · px', exact: true }).press('Tab')
+  assert.equal(await wrapper.evaluate((element) => getComputedStyle(element).fontSize), '28px')
+  await page.getByRole('button', { name: 'tablet画布', exact: true }).click()
+  await size.fill('42')
+  await size.press('Tab')
+  await page.getByRole('button', { name: 'mobile画布', exact: true }).click()
+  assert.equal(await size.inputValue(), '28')
+  await page.getByRole('button', { name: '重置此断点，恢复继承', exact: true }).click()
+  assert.equal(await size.inputValue(), '42')
+  await page.getByRole('button', { name: '撤销', exact: true }).click()
+  assert.equal(await size.inputValue(), '28')
+  await page.getByRole('button', { name: 'desktop画布', exact: true }).click()
+  assert.equal(await size.inputValue(), '56')
+  await page.screenshot({ path: `${output}/responsive-editor.png` })
+  await page.locator('.canvas-page .page-node.image img').first().click()
+  await page.getByRole('button', { name: '选择或上传本地图片', exact: true }).click()
+  const picker = page.getByLabel('上传本地图片', { exact: true })
+  await picker.setInputFiles({
+    name: 'bad.svg',
+    mimeType: 'image/svg+xml',
+    buffer: Buffer.from('<svg/>'),
+  })
+  await page.getByRole('alert').filter({ hasText: '暂不接受 SVG' }).waitFor()
+  const data = await page.evaluate(() => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 120
+    canvas.height = 80
+    const context = canvas.getContext('2d')!
+    context.fillStyle = '#8ba879'
+    context.fillRect(0, 0, 120, 80)
+    return canvas.toDataURL('image/png').split(',')[1]!
+  })
+  const fixture = Buffer.from(data, 'base64')
+  await picker.setInputFiles({ name: 'local-fixture.png', mimeType: 'image/png', buffer: fixture })
+  await page.getByRole('button', { name: '使用素材 local-fixture.png', exact: true }).click()
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll<HTMLImageElement>('.canvas-page img')].some(
+      (image) => image.src.startsWith('data:image/webp;') && image.naturalWidth === 120,
+    ),
+  )
+  assert.ok(
+    await page
+      .getByRole('button', { name: '删除素材 local-fixture.png', exact: true })
+      .isDisabled(),
+  )
+  await page
+    .getByRole('textbox', { name: '素材名称 local-fixture.png', exact: true })
+    .fill('本地测试图片')
+  await page.getByRole('textbox', { name: '素材名称 local-fixture.png', exact: true }).press('Tab')
+  await picker.setInputFiles({ name: 'unused.png', mimeType: 'image/png', buffer: fixture })
+  await page.getByRole('button', { name: '删除素材 unused.png', exact: true }).click()
+  assert.equal(await page.locator('.media-card').count(), 1)
+  await page.getByRole('button', { name: '撤销', exact: true }).click()
+  assert.equal(await page.locator('.media-card').count(), 2)
+  await page.getByRole('button', { name: '重做', exact: true }).click()
+  assert.equal(await page.locator('.media-card').count(), 1)
+  await page.screenshot({ path: `${output}/media-editor.png` })
+  await page.getByRole('button', { name: '组件', exact: true }).click()
+  for (const name of ['首屏介绍', '三列特性', '图文介绍', '行动邀请'])
+    await page.getByRole('button', { name: `插入区块 ${name}`, exact: true }).click()
+  assert.equal(await page.locator('.canvas-page > .page-node').count(), 7)
+  await page
+    .getByRole('button', { name: '插入区块 首屏介绍', exact: true })
+    .dragTo(page.locator('.canvas-page > .root-drop-slot').first())
+  await page.waitForFunction(
+    () => document.querySelectorAll('.canvas-page > .page-node').length === 8,
+  )
+  await page.getByRole('button', { name: '撤销', exact: true }).click()
+  assert.equal(await page.locator('.canvas-page > .page-node').count(), 7)
+  await heading.click()
+  await page.locator('.properties .panel-tabs button').filter({ hasText: '动画' }).click()
+  for (const name of ['向上浮现', '柔和淡入', '旋入', '侧向滑入', '视差穿行', '缩放展开'])
+    await page.getByRole('button', { name, exact: true }).click()
+  await page.getByLabel('播放方式').selectOption('sequence')
+  await page.getByRole('button', { name: '保存', exact: true }).click()
+  await page.getByRole('status').filter({ hasText: '已保存到作品库' }).waitFor()
+  await page.reload()
+  await heading.waitFor()
+  assert.equal(await page.locator('.canvas-page > .page-node').count(), 7)
+  assert.ok(
+    await page
+      .locator('.canvas-page img')
+      .first()
+      .getAttribute('src')
+      .then((src) => src?.startsWith('data:image/webp;')),
+  )
+}
 try {
   let ready = false
   for (let attempt = 0; attempt < 100; attempt++) {
@@ -102,6 +198,7 @@ try {
     'Guide should not reappear after dismissal',
   )
   await imagesLoaded(page)
+  await verifyV06()
   await page.getByRole('button', { name: '预览', exact: true }).click()
   const frame = page.frameLocator('iframe[title="独立页面预览"]')
   await frame.getByRole('heading', { name: '公开体验版自动验收', exact: true }).waitFor()
@@ -111,13 +208,31 @@ try {
   )
   await page.getByRole('button', { name: '预览mobile', exact: true }).click()
   await frame
+    .getByRole('heading', { name: '公开体验版自动验收', exact: true })
+    .locator('..')
+    .evaluate((element) => {
+      if (getComputedStyle(element).fontSize !== '28px')
+        throw new Error('Mobile override missing from preview')
+    })
+  await frame
     .locator('img')
     .evaluateAll((images) =>
       Promise.all(images.map((image) => (image as HTMLImageElement).decode())),
     )
   await page.getByRole('button', { name: '时间轴试播', exact: true }).click()
+  const progress = page.getByRole('slider', { name: '时间轴播放进度', exact: true })
+  await progress.focus()
+  await progress.press('End')
+  await frame
+    .getByRole('heading', { name: '公开体验版自动验收', exact: true })
+    .locator('..')
+    .evaluate((element) => {
+      if (Number(getComputedStyle(element).opacity) < 0.99)
+        throw new Error('Preset animation did not reach its final frame')
+    })
   await page.getByRole('button', { name: '关闭预览', exact: true }).click()
   await page.getByRole('heading', { name: '公开体验版自动验收', exact: true }).click()
+  await page.locator('.properties .panel-tabs button').filter({ hasText: '属性' }).click()
   await page.evaluate(() => {
     const state = window as Window & { smokeOriginalPut?: typeof IDBObjectStore.prototype.put }
     state.smokeOriginalPut = IDBObjectStore.prototype.put
@@ -147,7 +262,33 @@ try {
   await page.getByRole('button', { name: '导出页面 JSON', exact: true }).click()
   const backup = `${output}/backup.json`
   await (await download).saveAs(backup)
+  const saved = JSON.parse(await readFile(backup, 'utf8')) as {
+    version: number
+    assets: { dataUrl: string }[]
+  }
+  assert.equal(saved.version, 3)
+  assert.equal(saved.assets.length, 1)
+  assert.ok(saved.assets[0]!.dataUrl.startsWith('data:image/webp;'))
   await library('上线验收作品')
+  await page.getByRole('button', { name: '重命名 上线验收作品', exact: true }).click()
+  await page.getByRole('textbox', { name: '新的作品名称', exact: true }).fill('素材备份验收')
+  await page.getByRole('button', { name: '保存名称', exact: true }).click()
+  await page.waitForFunction(
+    () => !document.querySelector<HTMLButtonElement>('.projects-heading .btn')?.disabled,
+  )
+  const libraryDownload = page.waitForEvent('download')
+  await page.getByRole('button', { name: '导出 素材备份验收', exact: true }).click()
+  await (await libraryDownload).saveAs(`${output}/library-backup.json`)
+  const libraryBackup = JSON.parse(
+    await readFile(`${output}/library-backup.json`, 'utf8'),
+  ) as typeof saved
+  assert.deepEqual(libraryBackup.assets, saved.assets)
+  await page.getByRole('button', { name: '重命名 素材备份验收', exact: true }).click()
+  await page.getByRole('textbox', { name: '新的作品名称', exact: true }).fill('上线验收作品')
+  await page.getByRole('button', { name: '保存名称', exact: true }).click()
+  await page.waitForFunction(
+    () => !document.querySelector<HTMLButtonElement>('.projects-heading .btn')?.disabled,
+  )
   await page.locator('input[type="file"]').setInputFiles({
     name: 'invalid.json',
     mimeType: 'application/json',
@@ -159,6 +300,14 @@ try {
   await page.waitForFunction(() => document.querySelectorAll('.project-card').length === 2)
   await page.reload()
   await page.waitForFunction(() => document.querySelectorAll('.project-card').length === 2)
+  await page.getByRole('link', { name: '打开 上线验收作品', exact: true }).first().click()
+  await page.getByRole('heading', { name: '公开体验版自动验收', exact: true }).waitFor()
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll<HTMLImageElement>('.canvas-page img')].some(
+      (image) => image.src.startsWith('data:image/webp;') && image.naturalWidth === 120,
+    ),
+  )
+  await library('上线验收作品')
   await imagesLoaded(page)
   await page.screenshot({ path: `${output}/projects-desktop.png`, fullPage: true })
   await page.setViewportSize({ width: 390, height: 844 })
@@ -179,7 +328,7 @@ try {
   await page.screenshot({ path: `${output}/projects-mobile.png`, fullPage: true })
   assert.deepEqual(errors, [], 'Runtime or local resource failures')
   console.log(
-    `PASS: guide, templates, edit, undo/redo, save/reload, subpath preview/images, quota/retry, invalid import, export/import, mobile: ${base}`,
+    `PASS: v0.6 responsive inheritance/reset, local image upload/rename/use/delete/undo, block and motion presets, portable media backup; guide, edit, save/reload, preview, quota/retry, import and mobile: ${base}`,
   )
 } catch (error) {
   await page.screenshot({ path: `${output}/failure.png`, fullPage: true }).catch(() => {})

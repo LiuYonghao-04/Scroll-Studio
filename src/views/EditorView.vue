@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 import {
   ArrowLeft,
@@ -36,7 +36,7 @@ import {
   createProject,
   initializeProjects,
   journalKey,
-  listProjects,
+  listProjectSummaries,
 } from '../services/projects'
 import { newDocument } from '../core/document'
 import type { TemplateId } from '../types/project'
@@ -44,7 +44,8 @@ import type { PreviewMode } from '../animation/runtime'
 import { useEditorStore } from '../stores/editor'
 import { useDragDrop } from '../composables/useDragDrop'
 import { parseDocument } from '../core/document'
-import { deviceWidths, type Device } from '../types/editor'
+import { deviceWidths } from '../types/editor'
+import { MAX_DOCUMENT_BYTES } from '../core/media'
 const store = useEditorStore()
 const projects = useProjectsStore(),
   route = useRoute(),
@@ -53,7 +54,7 @@ const initializing = ref(true),
   routeError = ref('')
 let opening = 0
 const { drop } = useDragDrop()
-const device = ref<Device>('desktop')
+const device = toRef(store, 'device')
 const preview = ref(false)
 const previewMode = ref<PreviewMode>('scroll')
 const menu = ref(false)
@@ -97,7 +98,7 @@ async function openRoute() {
     if (typeof id === 'string' && id) {
       if (!(await store.openProject(id))) throw new Error(store.error || '无法切换作品。')
     } else {
-      const all = await listProjects()
+      const all = await listProjectSummaries()
       let active: string | null = null
       try {
         active = localStorage.getItem(ACTIVE_PROJECT_KEY)
@@ -161,7 +162,7 @@ async function importJson(event: Event) {
   const selected = input.files?.[0]
   if (!selected) return
   try {
-    if (selected.size > 2_000_000) throw new Error('文件不能超过 2 MB。')
+    if (selected.size > MAX_DOCUMENT_BYTES) throw new Error('文件不能超过 16 MB。')
     store.replace(parseDocument(await selected.text()))
     store.error = ''
     store.save()
@@ -358,7 +359,11 @@ onBeforeUnmount(() => {
                     @dragover.prevent.stop
                     @drop="drop($event, null, index)"
                   ></div>
-                  <NodeRenderer :node="node" editing
+                  <NodeRenderer
+                    :node="node"
+                    :device="device"
+                    :assets="store.document.assets"
+                    editing
                 /></template>
                 <div class="canvas-add" @dragover.prevent.stop @drop="drop($event, null)">
                   <span>+</span>
@@ -390,10 +395,10 @@ onBeforeUnmount(() => {
               ><Check :size="12" />{{
                 store.recoveryRequired ? '自动保存已暂停 · 请恢复或手动保存' : '自动保存至本机'
               }}</span
-            ><span>Vue 3 + TypeScript <i></i>Scroll Studio 0.5</span>
+            ><span>Vue 3 + TypeScript <i></i>Scroll Studio 0.6</span>
           </footer>
         </main>
-        <PropertyPanel />
+        <PropertyPanel @media="side = 'library'" />
       </div>
       <input ref="file" type="file" accept="application/json,.json" hidden @change="importJson" />
     </div>

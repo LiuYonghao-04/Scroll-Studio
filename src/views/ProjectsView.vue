@@ -18,7 +18,9 @@ import BrandMark from '../components/ui/BrandMark.vue'
 import ProjectCreateDialog from '../components/projects/ProjectCreateDialog.vue'
 import QuickStartGuide from '../components/editor/QuickStartGuide.vue'
 import { useProjectsStore } from '../stores/projects'
-import type { ProjectRecord, TemplateId } from '../types/project'
+import type { ProjectSummary, TemplateId } from '../types/project'
+import { getProject } from '../services/projects'
+import { MAX_DOCUMENT_BYTES } from '../core/media'
 const store = useProjectsStore(),
   router = useRouter()
 const creating = ref(false),
@@ -26,7 +28,7 @@ const creating = ref(false),
   busy = ref(false),
   error = ref(''),
   file = ref<HTMLInputElement>()
-const operation = ref<{ kind: 'rename' | 'delete'; project: ProjectRecord }>(),
+const operation = ref<{ kind: 'rename' | 'delete'; project: ProjectSummary }>(),
   name = ref(''),
   nameInput = ref<HTMLInputElement>()
 const visible = computed(() =>
@@ -57,7 +59,7 @@ async function act(action: () => Promise<unknown>) {
     busy.value = false
   }
 }
-async function openOperation(project: ProjectRecord, kind: 'rename' | 'delete') {
+async function openOperation(project: ProjectSummary, kind: 'rename' | 'delete') {
   operation.value = { project, kind }
   name.value = project.document.name
   await nextTick()
@@ -72,9 +74,10 @@ async function confirmOperation() {
     operation.value = undefined
   })
 }
-function exportProject(project: ProjectRecord) {
+async function exportProject(project: ProjectSummary) {
+  const current = await getProject(project.id)
   const url = URL.createObjectURL(
-    new Blob([JSON.stringify(project.document, null, 2)], { type: 'application/json' }),
+    new Blob([JSON.stringify(current.document, null, 2)], { type: 'application/json' }),
   )
   const link = document.createElement('a')
   link.href = url
@@ -87,7 +90,7 @@ async function importProject(event: Event) {
     selected = input.files?.[0]
   if (!selected) return
   await act(async () => {
-    if (selected.size > 2_000_000) throw new Error('JSON 文件不能超过 2 MB。')
+    if (selected.size > MAX_DOCUMENT_BYTES) throw new Error('JSON 文件不能超过 16 MB。')
     await store.importDocument(await selected.text())
   })
   input.value = ''
@@ -116,7 +119,7 @@ onMounted(refresh)
       <main class="projects-main">
         <div class="projects-heading">
           <div>
-            <span class="project-eyebrow">YOUR CREATIVE SPACE / 0.5</span>
+            <span class="project-eyebrow">YOUR CREATIVE SPACE / 0.6</span>
             <h1>每个想法，都有自己的位置。</h1>
             <p>继续打磨正在生长的作品，或开始一次新的探索。</p>
           </div>
@@ -220,7 +223,8 @@ onMounted(refresh)
                 ><button
                   class="icon-button"
                   :aria-label="`导出 ${project.document.name}`"
-                  @click="exportProject(project)"
+                  :disabled="busy"
+                  @click="act(() => exportProject(project))"
                 >
                   <Download :size="15" /></button
                 ><button

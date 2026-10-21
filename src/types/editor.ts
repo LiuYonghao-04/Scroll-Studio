@@ -12,6 +12,28 @@ export interface NodeStyle {
   gap: number
   align: 'left' | 'center' | 'right'
   layout: 'column' | 'row'
+  width: number
+  widthUnit: 'px' | '%'
+  maxWidth: number
+  height: number
+  minHeight: number
+  borderWidth: number
+  borderColor: string
+  borderStyle: 'solid' | 'dashed' | 'dotted'
+  fontWeight: number
+  lineHeight: number
+  justify: 'flex-start' | 'center' | 'flex-end' | 'space-between'
+  wrap: boolean
+  objectFit: 'cover' | 'contain'
+}
+export interface MediaAsset {
+  id: string
+  name: string
+  mime: 'image/png' | 'image/jpeg' | 'image/webp'
+  dataUrl: string
+  bytes: number
+  width: number
+  height: number
 }
 export interface AnimationPose {
   y: number
@@ -44,16 +66,18 @@ export interface PageNode {
   src: string
   href: string
   style: NodeStyle
+  responsive: Record<'tablet' | 'mobile', Partial<NodeStyle>>
   animation: AnimationConfig
   children: PageNode[]
 }
 export interface PageDocument {
-  version: 2
+  version: 3
   id: string
   name: string
   updatedAt: string
   nodes: PageNode[]
   timeline: TimelineConfig
+  assets: MediaAsset[]
 }
 export interface TimelineConfig {
   triggerNodeId: string | null
@@ -62,7 +86,7 @@ export interface TimelineConfig {
   scrub: boolean
 }
 export interface DragPayload {
-  kind: 'new' | 'move'
+  kind: 'new' | 'move' | 'block'
   value: string
 }
 export const deviceWidths: Record<Device, number> = { desktop: 1120, tablet: 768, mobile: 390 }

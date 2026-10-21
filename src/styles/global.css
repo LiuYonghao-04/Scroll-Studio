@@ -1860,9 +1860,6 @@ kbd {
 .page-node.section > .page-node {
   flex-shrink: 1;
 }
-.page-node.section[style*='row'] > .page-node {
-  flex: 1;
-}
 .page-node.editable {
   cursor: pointer;
   outline: 1px solid transparent;
@@ -2072,30 +2069,6 @@ kbd {
   gap: 12px;
   justify-content: flex-end;
   margin-top: 28px;
-}
-@container (max-width:600px) {
-  .drop-slot.horizontal {
-    top: -7px;
-    bottom: auto;
-    left: 0;
-    right: 0;
-    width: auto;
-    height: 14px;
-  }
-  .page-node.heading {
-    font-size: min(var(--node-font-size), 36px) !important;
-  }
-  .page-node.section {
-    padding: min(var(--node-padding), 24px) !important;
-    flex-direction: column !important;
-    align-items: stretch !important;
-  }
-  .page-node.section > .page-node {
-    flex: initial !important;
-  }
-  .page-node.text {
-    font-size: min(var(--node-font-size), 18px) !important;
-  }
 }
 @media (min-width: 1600px) {
   .hero {

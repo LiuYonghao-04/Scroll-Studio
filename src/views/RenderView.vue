@@ -3,6 +3,7 @@ import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import NodeRenderer from '../components/editor/NodeRenderer.vue'
 import { newDocument, parseDocument } from '../core/document'
 import { loadDocument } from '../services/storage'
+import { deviceForWidth } from '../core/responsive'
 import { ACTIVE_PROJECT_KEY, getProject } from '../services/projects'
 import {
   mountPageAnimations,
@@ -12,6 +13,8 @@ import {
 } from '../animation/runtime'
 const doc = ref(newDocument())
 const root = ref<HTMLElement>()
+const device = ref(deviceForWidth(window.innerWidth))
+let observer: ResizeObserver | undefined
 let player: AnimationPlayer | undefined
 let revision = 0
 async function render(input: unknown, mode: PreviewMode = 'scroll') {
@@ -46,6 +49,10 @@ function refreshImages() {
   refreshPageAnimations()
 }
 onMounted(async () => {
+  observer = new ResizeObserver((entries) => {
+    device.value = deviceForWidth(entries[0]?.contentRect.width ?? window.innerWidth)
+  })
+  if (root.value) observer.observe(root.value)
   window.addEventListener('message', receive)
   window.parent.postMessage({ type: 'scroll-studio:ready' }, location.origin)
   if (window.parent !== window) return
@@ -58,6 +65,7 @@ onMounted(async () => {
   }
 })
 onBeforeUnmount(() => {
+  observer?.disconnect()
   window.removeEventListener('message', receive)
   revision++
   player?.dispose()
@@ -65,7 +73,13 @@ onBeforeUnmount(() => {
 </script>
 <template>
   <main ref="root" class="rendered-page" @load.capture="refreshImages">
-    <NodeRenderer v-for="node in doc.nodes" :key="node.id" :node="node" />
+    <NodeRenderer
+      v-for="node in doc.nodes"
+      :key="node.id"
+      :node="node"
+      :device="device"
+      :assets="doc.assets"
+    />
     <div v-if="!doc.nodes.length" class="empty-preview">这是一个空白页面。返回编辑器添加组件。</div>
   </main>
 </template>

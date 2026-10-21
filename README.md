@@ -26,9 +26,19 @@ npm run preview
 
 生产产物在 `dist/`。GitHub Pages 通过 Actions 部署公开体验版；无需账号或后端服务。使用 `npm ci` 保持 lockfile 对应版本；TypeScript 固定在 5.9 系列，避开本次发现的 TS 7 与 vue-tsc 内部入口兼容问题。
 
-## 公开体验版部署 · 0.5
+## 0.6 · 响应式创作与本地素材
 
-推送 `main` 后，GitHub Actions 自动安装锁定依赖、运行 70 项单元测试、严格类型检查、Pages 构建和 Chromium 核心流程检查；全部通过后才部署。PR 执行相同检查，但不发布网站。
+- 桌面 / 平板 / 手机独立样式，画布与属性联动，可重置继承及撤销重做。
+- 新增宽度（px / %）、最大宽度、高度、最小高度、边框、字重、行高、主轴分布、换行和图片填充。
+- 左侧「素材」上传 PNG / JPEG / WebP，自动缩小和压缩；支持重命名、复用、引用计数与未使用素材删除。图片随作品保存到 IndexedDB，并包含在 JSON 备份里。
+- 4 个可编辑区块：首屏介绍、三列特性、图文介绍、行动邀请，支持点击或拖入；6 个可编辑动画预设，可继续配置关键帧与共享时间轴。
+- schema v3 兼容迁移 v1 / v2 文档；没有新增运行时依赖。
+
+容量限制、断点规则和迁移语义见 [0.6 使用说明](docs/EDITOR_V06.md)。
+
+## 公开体验版部署
+
+推送 `main` 后，GitHub Actions 自动安装锁定依赖、运行 95 项单元测试、严格类型检查、Pages 构建和 Chromium 核心流程检查；全部通过后才部署。PR 执行相同检查，但不发布网站。
 
 ```sh
 npm run build:pages
@@ -68,7 +78,7 @@ npm run preview:pages
 - 三个可编辑模板：个人作品集、产品介绍、滚动叙事；也可创建空白作品。模板生成真实组件树、链接和动画参数，复制时重建 ID 并修正内部引用。
 - 保存队列、离开前写入、关闭页面恢复草稿，以及版本冲突检查；切换作品清空历史和选区，防止跨作品撤销或延迟保存写回已删除记录。
 - 独立触发 / 共享时间轴两种播放方式；共享触发元素、触发线、滚动距离和 scrub 可持久化。预览支持滚动体验与时间轴试播，提供播放、暂停、进度定位和重播。
-- schema v2 自动迁移 v1 本地草稿与 JSON 备份；迁移读取不会覆盖原始数据，保存后写入新格式。无滚动空间的页面仍保持内容可见。
+- schema v3 自动迁移 v1 / v2 本地草稿与 JSON 备份；迁移读取不会覆盖原始数据，保存后写入新格式。无滚动空间的页面仍保持内容可见。
 - JSON 导出与校验导入：作品库导入生成独立作品；编辑器内导入替换当前作品内容并可撤销。对不合法 URL 不执行，对任意输入文字不使用 v-html。
 
 快速体验：进入作品库 → 新建作品 → 选择模板 → 编辑文字与动画 → 保存 → 从页面菜单返回「我的作品」→ 复制或打开另一件作品。每件作品独立保存；布局缩略图是根据内容生成的 SVG 示意图，非像素截图。
@@ -80,7 +90,7 @@ npm run preview:pages
 
 - 每件作品目前是一张单页，没有单一作品内的多页面站点路由；作品库支持多件独立作品。删除需确认，删除后无法撤销，需长期留档时导出 JSON。
 - 没有自由绝对坐标拖放、画布缩放手柄、网格吸附或任意组件尺寸编辑；位置由布局顺序、容器和间距决定。
-- 没有富文本、文件上传、媒体管理、断点独立样式；图片目前编辑 URL。
+- 没有富文本、视频 / 音频素材、跨作品共享素材库或任意自定义断点。本地图片库按作品隔离，也可使用图片 URL。
 - 没有 pin、多场景时间轴、循环/yoyo、贝塞尔自定义曲线、拖动时自动横向滚动或多个轨道同时选中；精确数值也可在右侧面板编辑。
 - 没有 HTML 导出、用户作品的独立线上发布、账号、后端、多人协作、支付、订阅或云端同步。GitHub Pages 托管的是编辑器体验网站，不会自动托管访问者的作品。
 - 桌面 HTML Drag and Drop 是首选；手机端使用点击添加与排序按钮，不承诺原生触摸拖拽兼容。
@@ -93,6 +103,7 @@ npm run preview:pages
 
 ```text
 Scroll Studio/
+├── .github/workflows/pages.yml
 ├── .gitattributes
 ├── .gitignore
 ├── .prettierrc.json
@@ -105,6 +116,8 @@ Scroll Studio/
 ├── THIRD_PARTY_NOTICES.md
 ├── 任务要求.md                    # 保留用户原始要求
 ├── docs/
+│   ├── DEPLOYMENT.md
+│   ├── EDITOR_V06.md
 │   ├── UPSTREAM_AUDIT.md
 │   ├── ARCHITECTURE.md
 │   ├── ANIMATION_EDITOR.md
@@ -113,12 +126,17 @@ Scroll Studio/
 ├── public/
 │   ├── favicon.svg
 │   └── images/landscape.svg
+├── scripts/smoke.ts
 ├── src/
 │   ├── App.vue
 │   ├── main.ts
 │   ├── router.ts
 │   ├── animation/runtime.ts
 │   ├── core/document.ts
+│   ├── core/assets.ts
+│   ├── core/responsive.ts
+│   ├── core/media.ts
+│   ├── core/presets.ts
 │   ├── core/motion.ts
 │   ├── core/timeline-edit.ts
 │   ├── core/templates.ts
@@ -126,6 +144,7 @@ Scroll Studio/
 │   ├── composables/useDragDrop.ts
 │   ├── composables/useTimelineDrag.ts
 │   ├── services/storage.ts
+│   ├── services/media.ts
 │   ├── services/projects.ts
 │   ├── stores/editor.ts
 │   ├── stores/projects.ts
@@ -134,12 +153,15 @@ Scroll Studio/
 │   ├── styles/global.css
 │   ├── styles/editor-motion.css
 │   ├── styles/projects.css
+│   ├── styles/editor-v06.css
 │   ├── components/
 │   │   ├── ui/BrandMark.vue
 │   │   ├── home/StudioPreview.vue
 │   │   ├── projects/ProjectCreateDialog.vue
 │   │   └── editor/
 │   │       ├── ComponentLibrary.vue
+│   │       ├── MediaLibrary.vue
+│   │       ├── QuickStartGuide.vue
 │   │       ├── LayerTree.vue
 │   │       ├── NodeRenderer.vue
 │   │       ├── PropertyPanel.vue
@@ -156,7 +178,8 @@ Scroll Studio/
     ├── editor.test.ts
     ├── motion.test.ts
     ├── timeline-edit.test.ts
-    └── projects.test.ts
+    ├── projects.test.ts
+    └── v06.test.ts
 ```
 
 业务源码仅 `.ts` / `.vue`，Vue SFC 均为 `<script setup lang="ts">`；没有自写 `.js` / `.jsx`。第三方依赖和构建输出的 JavaScript 不属于业务源文件。架构数据流和模块边界见 [ARCHITECTURE](docs/ARCHITECTURE.md)。
@@ -168,6 +191,6 @@ Scroll Studio/
 ## 下一阶段
 
 1. 先确认可视化动画编辑产品的 GSAP 授权范围，再决定公开发布路线。
-2. 在已完成的关键帧、共享时间轴和精确拖动基础上增加多场景编排、多选和自动横向滚动，补充持续执行的浏览器回归测试。
-3. 在作品库和 IndexedDB 基础上，将布局属性扩展为按断点覆盖的 schema，增加作品内的多页面集合与资源管理。
-4. 设计静态导出编译器和发布产物规范，验证“编辑 → 保存 → 导入 → 发布”渲染一致性，再接后端。
+2. 0.7 完成静态网站 ZIP 导出，打包图片和动画运行资源，增加发布前检查与正式示例模板，验证导出与预览一致。
+3. 1.0 冻结功能，集中修复兼容性、迁移、备份恢复、可访问性和性能问题，完成正式发布验收。
+4. 多页面、云端同步、账号与多人协作不属于本次 1.0 范围；GitHub Pages 继续托管编辑器。

@@ -7,12 +7,12 @@ import {
   deleteProject,
   getProject,
   initializeProjects,
-  listProjects,
+  listProjectSummaries,
   updateProject,
 } from '../services/projects'
-import type { ProjectRecord, TemplateId } from '../types/project'
+import type { ProjectSummary, TemplateId } from '../types/project'
 export const useProjectsStore = defineStore('projects', () => {
-  const projects = ref<ProjectRecord[]>([]),
+  const projects = ref<ProjectSummary[]>([]),
     loading = ref(false),
     error = ref(''),
     warning = ref('')
@@ -25,7 +25,7 @@ export const useProjectsStore = defineStore('projects', () => {
       error.value = ''
       try {
         warning.value = await initializeProjects()
-        projects.value = await listProjects()
+        projects.value = await listProjectSummaries()
       } catch (reason) {
         error.value = reason instanceof Error ? reason.message : '作品库无法读取。'
         throw reason
@@ -43,8 +43,8 @@ export const useProjectsStore = defineStore('projects', () => {
     await refresh()
     return created
   }
-  async function rename(project: ProjectRecord, name: string) {
-    const doc = parseDocument(project.document)
+  async function rename(project: ProjectSummary, name: string) {
+    const doc = parseDocument((await getProject(project.id)).document)
     doc.name = name.trim().slice(0, 100) || doc.name
     doc.updatedAt = new Date().toISOString()
     await updateProject(project.id, doc, project.revision)
@@ -56,7 +56,7 @@ export const useProjectsStore = defineStore('projects', () => {
     await refresh()
     return copy
   }
-  async function remove(project: ProjectRecord) {
+  async function remove(project: ProjectSummary) {
     await deleteProject(project.id, project.revision)
     await refresh()
   }

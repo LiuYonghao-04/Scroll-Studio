@@ -1,7 +1,7 @@
 import { parseDocument } from '../core/document'
 import { projectThumbnail } from '../core/thumbnail'
 import type { PageDocument } from '../types/editor'
-import type { ProjectJournal, ProjectRecord } from '../types/project'
+import type { ProjectJournal, ProjectRecord, ProjectSummary } from '../types/project'
 import { STORAGE_KEY } from './storage'
 
 export const PROJECT_DB = 'scroll-studio:projects'
@@ -160,6 +160,34 @@ export async function listProjects(): Promise<ProjectRecord[]> {
             .map(record)
             .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
         )
+      } catch (error) {
+        fail(error)
+      }
+    }
+  })
+}
+// Read one record at a time and release embedded images instead of retaining every project asset in UI state.
+export async function listProjectSummaries(): Promise<ProjectSummary[]> {
+  return transaction(['projects'], 'readonly', (tx, result, fail) => {
+    const summaries: ProjectSummary[] = []
+    const request = tx.objectStore('projects').openCursor()
+    request.onsuccess = () => {
+      try {
+        const cursor = request.result
+        if (!cursor) {
+          result(summaries.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)))
+          return
+        }
+        const current = record(cursor.value as unknown)
+        summaries.push({
+          id: current.id,
+          createdAt: current.createdAt,
+          updatedAt: current.updatedAt,
+          revision: current.revision,
+          thumbnail: current.thumbnail,
+          document: { name: current.document.name },
+        })
+        cursor.continue()
       } catch (error) {
         fail(error)
       }

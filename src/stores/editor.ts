@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import {
   clone,
+  equal,
   createNode,
   findLocation,
   findNode,
@@ -9,7 +10,14 @@ import {
   parseDocument,
 } from '../core/document'
 import { loadDocument, saveDocument } from '../services/storage'
-import type { AnimationKeyframe, NodeKind, PageDocument, PageNode } from '../types/editor'
+import type {
+  AnimationKeyframe,
+  Device,
+  NodeKind,
+  NodeStyle,
+  PageDocument,
+  PageNode,
+} from '../types/editor'
 import { insertKeyframe } from '../core/motion'
 import {
   ACTIVE_PROJECT_KEY,
@@ -23,6 +31,8 @@ import {
 export const useEditorStore = defineStore('editor', () => {
   const document = ref<PageDocument>(newDocument(true))
   const selectedId = ref<string | null>(null)
+  const device = ref<Device>('desktop')
+  const libraryTab = ref<'components' | 'layers' | 'media'>('components')
   const inspectorTab = ref<'style' | 'motion'>('style')
   const selectedKeyframeId = ref<string | null>(null)
   const past = ref<PageDocument[]>([])
@@ -47,7 +57,7 @@ export const useEditorStore = defineStore('editor', () => {
     const before = clone(document.value)
     const next = clone(before)
     mutate(next)
-    if (JSON.stringify(before) === JSON.stringify(next)) return false
+    if (equal(before, next)) return false
     // Validate before committing so invalid input can never poison history or persistence.
     try {
       parseDocument(next)
@@ -59,6 +69,18 @@ export const useEditorStore = defineStore('editor', () => {
     lastGroup = group
     lastEdit = Date.now()
     if (past.value.length > 60) past.value.shift()
+    // Embedded images travel with backups; cap history memory as well as step count.
+    while (
+      past.value.length > 1 &&
+      past.value.reduce(
+        (size, doc) =>
+          size +
+          JSON.stringify({ ...doc, assets: [] }).length +
+          doc.assets.reduce((sum, asset) => sum + asset.dataUrl.length, 0),
+        0,
+      ) > 16_000_000
+    )
+      past.value.shift()
     future.value = []
     next.updatedAt = new Date().toISOString()
     document.value = next
@@ -105,6 +127,32 @@ export const useEditorStore = defineStore('editor', () => {
       location.siblings.splice(location.index, 1)
       target.splice(Math.max(0, Math.min(position, target.length)), 0, node)
     })
+  }
+  function updateStyle(id: string, patch: Partial<NodeStyle>) {
+    return commit((doc) => {
+      const node = findNode(doc.nodes, id)
+      if (!node) return
+      Object.assign(device.value === 'desktop' ? node.style : node.responsive[device.value], patch)
+    })
+  }
+  function resetStyle(id: string) {
+    if (device.value === 'desktop') return
+    const breakpoint = device.value
+    commit((doc) => {
+      const node = findNode(doc.nodes, id)
+      if (node) node.responsive[breakpoint] = {}
+    })
+  }
+  function insertBlock(node: PageNode, parentId: string | null = null, index?: number) {
+    if (
+      commit((doc) => {
+        const parent = parentId ? findNode(doc.nodes, parentId) : undefined
+        if (parentId && parent?.kind !== 'section') return
+        const siblings = parent?.children ?? doc.nodes
+        siblings.splice(index ?? siblings.length, 0, node)
+      })
+    )
+      selectedId.value = node.id
   }
   function reorder(id: string, direction: -1 | 1) {
     commit((doc) => {
@@ -180,7 +228,7 @@ export const useEditorStore = defineStore('editor', () => {
           const saved = await updateProject(id, snapshot, projectRevision.value)
           if (projectId.value !== id) return true
           projectRevision.value = saved.revision
-          const unchanged = JSON.stringify(document.value) === JSON.stringify(snapshot)
+          const unchanged = equal(document.value, snapshot)
           dirty.value = !unchanged
           recoveryRequired.value = false
           error.value = ''
@@ -238,7 +286,7 @@ export const useEditorStore = defineStore('editor', () => {
       warning = ''
     try {
       const pending = readJournal(id)
-      if (pending && JSON.stringify(pending.document) !== JSON.stringify(saved.document)) {
+      if (pending && !equal(pending.document, saved.document)) {
         if (pending.revision !== saved.revision)
           warning = '待保存草稿与作品版本不一致，原草稿已保留。请先下载恢复备份，再决定是否导入。'
         else {
@@ -332,6 +380,8 @@ export const useEditorStore = defineStore('editor', () => {
   return {
     document,
     selectedId,
+    device,
+    libraryTab,
     inspectorTab,
     selectedKeyframeId,
     selected,
@@ -348,6 +398,9 @@ export const useEditorStore = defineStore('editor', () => {
     commit,
     add,
     update,
+    updateStyle,
+    resetStyle,
+    insertBlock,
     move,
     reorder,
     remove,

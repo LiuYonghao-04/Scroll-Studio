@@ -8,6 +8,7 @@ import { projectThumbnail } from '../src/core/thumbnail'
 import * as storage from '../src/services/projects'
 import { STORAGE_KEY } from '../src/services/storage'
 import { useEditorStore } from '../src/stores/editor'
+import { useProjectsStore } from '../src/stores/projects'
 
 beforeEach(() => {
   vi.restoreAllMocks()
@@ -20,6 +21,40 @@ afterEach(async () => {
   vi.unstubAllGlobals()
 })
 describe('project database and migration', () => {
+  it('lists lightweight summaries without dropping embedded assets from storage', async () => {
+    const doc = newDocument()
+    const png =
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aD1sAAAAASUVORK5CYII='
+    doc.assets = [
+      {
+        id: crypto.randomUUID(),
+        name: 'image.png',
+        mime: 'image/png',
+        dataUrl: `data:image/png;base64,${png}`,
+        bytes: atob(png).length,
+        width: 1,
+        height: 1,
+      },
+    ]
+    const saved = await storage.createProject(doc)
+    const summaries = await storage.listProjectSummaries()
+    expect(summaries[0]!.document).toEqual({ name: doc.name })
+    expect(JSON.stringify(summaries)).not.toContain(png)
+    expect((await storage.getProject(saved.id)).document.assets).toEqual(doc.assets)
+  })
+  it('loads complete documents when renaming a summary and still rejects stale revisions', async () => {
+    const doc = createTemplate('portfolio'),
+      record = await storage.createProject(doc),
+      store = useProjectsStore()
+    await store.refresh()
+    const summary = store.projects[0]!
+    await store.rename(summary, 'renamed through summary')
+    const saved = await storage.getProject(record.id)
+    expect(saved.document.nodes).toEqual(doc.nodes)
+    expect(saved.document.name).toBe('renamed through summary')
+    await expect(store.rename(summary, 'stale rename')).rejects.toThrow()
+    expect((await storage.getProject(record.id)).document.name).toBe('renamed through summary')
+  })
   it('rolls back a quota failure without changing the saved project', async () => {
     const project = await storage.createProject(newDocument()),
       next = clone(project.document)
@@ -60,7 +95,7 @@ describe('project database and migration', () => {
     const doc = newDocument()
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...doc, version: 1, timeline: undefined }))
     await storage.initializeProjects()
-    expect((await storage.listProjects())[0]!.document.version).toBe(2)
+    expect((await storage.listProjects())[0]!.document.version).toBe(3)
   })
   it('preserves corrupt legacy data while allowing unrelated new projects', async () => {
     localStorage.setItem(STORAGE_KEY, '{corrupt')

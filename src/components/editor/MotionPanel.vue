@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { Plus, Trash2, Diamond } from '@lucide/vue'
 import { useEditorStore } from '../../stores/editor'
-import { createAnimation } from '../../core/motion'
+import { motionPresets, presetFrames, type MotionPresetId } from '../../core/presets'
 import { editFrameOffset } from '../../core/timeline-edit'
 import {
   animationEases,
@@ -61,13 +61,10 @@ function offset(event: Event) {
     if (next !== undefined) frame({ offset: next })
   }
 }
-function preset(kind: 'rise' | 'fade' | 'turn') {
-  const next = createAnimation()
-  if (kind === 'fade') next.keyframes[0]!.y = 0
-  if (kind === 'turn')
-    Object.assign(next.keyframes[0]!, { y: 0, x: -80, rotation: -12, scale: 0.8 })
-  motion({ enabled: true, keyframes: next.keyframes })
-  store.selectedKeyframeId = next.keyframes[0]!.id
+function preset(kind: MotionPresetId) {
+  const frames = presetFrames(kind)
+  motion({ enabled: true, keyframes: frames })
+  store.selectedKeyframeId = frames[0]!.id
 }
 </script>
 <template>
@@ -80,10 +77,11 @@ function preset(kind: 'rise' | 'fade' | 'turn') {
     /></label>
     <p class="panel-help">关键帧与页面一起保存。设计画布保持静止，预览中查看真实效果。</p>
     <div class="motion-presets" aria-label="动画预设">
-      <button @click="preset('rise')">向上浮现</button
-      ><button @click="preset('fade')">柔和淡入</button
-      ><button @click="preset('turn')">旋入</button>
+      <button v-for="item in motionPresets" :key="item.id" @click="preset(item.id)">
+        {{ item.name }}
+      </button>
     </div>
+    <small>应用预设会替换当前关键帧，可撤销；播放方式、触发位置和轨道时长保持不变。</small>
     <label
       >播放方式<select
         :value="node.animation.mode"
