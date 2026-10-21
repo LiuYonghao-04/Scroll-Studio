@@ -20,6 +20,7 @@ const props = defineProps<{
 const store = useEditorStore()
 const { start, drop } = useDragDrop()
 const resolved = computed(() => resolveStyle(props.node, props.device))
+const href = computed(() => safeUrl(props.node.href) || '#')
 const style = computed(() => nodeStyle(props.node, props.device, props.horizontal))
 function select(event: MouseEvent) {
   if (!props.editing) return
@@ -107,9 +108,9 @@ function followLink(event: MouseEvent) {
     />
     <a
       v-else
-      :href="safeUrl(node.href) || '#'"
+      :href="href"
       :tabindex="editing ? -1 : 0"
-      :target="node.href.startsWith('http') ? '_blank' : undefined"
+      :target="/^https?:/i.test(href) ? '_blank' : undefined"
       rel="noopener noreferrer"
       @click="followLink"
       >{{ node.content }}</a

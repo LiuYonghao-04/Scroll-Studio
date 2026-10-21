@@ -120,6 +120,8 @@ export function findLocation(
 }
 export function safeUrl(value: string, image = false): string {
   const clean = value.trim()
+  // URL parsing removes tabs/newlines before normalizing a path or protocol.
+  if (/[\u0000-\u001f\u007f]/.test(clean)) return ''
   // Browsers normalize a leading /\ into //; reject it before accepting local paths.
   if (clean.startsWith('#') || /^\/(?![\\/])/.test(clean)) return clean
   try {

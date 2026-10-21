@@ -28,7 +28,7 @@ export function compileHtml(input: PageDocument): { html: string; css: string } 
   const css: Record<Device, string[]> = { desktop: [], tablet: [], mobile: [] }
   function render(node: PageNode, parent?: PageNode): string {
     for (const device of ['desktop', 'tablet', 'mobile'] as const) {
-      const selector = `[data-node-id="${cssId(node.id)}"]`
+      const selector = `.page-node[data-node-id="${cssId(node.id)}"]`
       css[device].push(
         `${selector}{${cssText(nodeStyle(node, device, parent?.kind === 'section' && resolveStyle(parent, device).layout === 'row'))}}`,
       )

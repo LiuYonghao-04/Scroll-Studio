@@ -15,6 +15,7 @@ const doc = ref(newDocument())
 const root = ref<HTMLElement>()
 const device = ref(deviceForWidth(window.innerWidth))
 let observer: ResizeObserver | undefined
+let resizeFrame = 0
 let player: AnimationPlayer | undefined
 let revision = 0
 let activeRequest: number | undefined
@@ -64,12 +65,42 @@ function receive(event: MessageEvent<unknown>) {
 function refreshImages() {
   refreshPageAnimations()
 }
+function previewKeyboard(event: KeyboardEvent) {
+  if (window.parent === window || activeRequest === undefined) return
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    window.parent.postMessage(
+      { type: 'scroll-studio:close-preview', requestId: activeRequest },
+      location.origin,
+    )
+  }
+  if (event.key !== 'Tab') return
+  const targets = [...document.querySelectorAll<HTMLElement>('a[href]')].filter(
+    (element) => element.tabIndex >= 0 && element.getClientRects().length > 0,
+  )
+  if (
+    !targets.length ||
+    (event.shiftKey && document.activeElement === targets[0]) ||
+    (!event.shiftKey && document.activeElement === targets.at(-1))
+  ) {
+    event.preventDefault()
+    window.parent.postMessage(
+      { type: 'scroll-studio:focus-boundary', backward: event.shiftKey, requestId: activeRequest },
+      location.origin,
+    )
+  }
+}
 onMounted(async () => {
   observer = new ResizeObserver((entries) => {
-    device.value = deviceForWidth(entries[0]?.contentRect.width ?? window.innerWidth)
+    const width = entries[0]?.contentRect.width ?? window.innerWidth
+    cancelAnimationFrame(resizeFrame)
+    resizeFrame = requestAnimationFrame(() => {
+      device.value = deviceForWidth(width)
+    })
   })
   if (root.value) observer.observe(root.value)
   window.addEventListener('message', receive)
+  window.addEventListener('keydown', previewKeyboard)
   window.parent.postMessage({ type: 'scroll-studio:ready' }, location.origin)
   if (window.parent !== window) return
   try {
@@ -82,7 +113,9 @@ onMounted(async () => {
 })
 onBeforeUnmount(() => {
   observer?.disconnect()
+  cancelAnimationFrame(resizeFrame)
   window.removeEventListener('message', receive)
+  window.removeEventListener('keydown', previewKeyboard)
   revision++
   player?.dispose()
 })

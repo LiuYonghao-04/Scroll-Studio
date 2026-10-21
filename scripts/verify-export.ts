@@ -207,6 +207,17 @@ export async function verifyShowcaseTemplates(browser: Browser, base: string, ou
         .getByRole('heading', { name: id === 'studio' ? /用设计/ : /少一点噪声/ })
         .waitFor()
       await page.getByRole('button', { name: '预览mobile', exact: true }).click()
+      await page.waitForFunction(() => {
+        const view = document.querySelector<HTMLIFrameElement>('iframe')?.contentWindow
+        return (
+          view &&
+          view.innerWidth === 390 &&
+          view.document.querySelector('.page-node.heading') &&
+          parseFloat(
+            view.getComputedStyle(view.document.querySelector('.page-node.heading')!).fontSize,
+          ) <= 40
+        )
+      })
       await frame.locator('main').evaluate((element) => {
         if (element.scrollWidth > 390) throw new Error('Showcase mobile preview overflows')
       })

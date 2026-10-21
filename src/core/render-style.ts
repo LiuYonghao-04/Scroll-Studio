@@ -27,7 +27,7 @@ export function nodeStyle(node: PageNode, device: Device, horizontal = false): C
         : 'auto',
     maxWidth: value.maxWidth ? `min(100%, ${value.maxWidth}px)` : '100%',
     height: value.height ? `${value.height}px` : 'auto',
-    minHeight: value.minHeight ? `${value.minHeight}px` : undefined,
+    minHeight: `${value.minHeight}px`,
     flex: horizontal && !value.width ? '1 1 0' : '0 1 auto',
     textAlign: value.align,
     ...(node.kind === 'section'

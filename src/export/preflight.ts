@@ -31,10 +31,10 @@ export function preflight(input: PageDocument): ExportIssue[] {
       }
     }
     if (node.kind === 'button') {
-      if (!safeUrl(node.href) || node.href === '#') add('尚未设置有效链接。')
-      else if (node.href.startsWith('#') && !ids.has(node.href.slice(1)))
-        add('目标锚点已经不存在。')
-      else if (node.href.startsWith('/')) add('本站绝对链接在新域名下可能指向其他页面。')
+      const href = safeUrl(node.href)
+      if (!href || href === '#') add('尚未设置有效链接。')
+      else if (href.startsWith('#') && !ids.has(href.slice(1))) add('目标锚点已经不存在。')
+      else if (href.startsWith('/')) add('本站绝对链接在新域名下可能指向其他页面。')
     }
     for (const device of ['desktop', 'tablet', 'mobile'] as const) {
       const style = resolveStyle(node, device)

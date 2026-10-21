@@ -19,6 +19,7 @@ import type {
   PageNode,
 } from '../types/editor'
 import { insertKeyframe } from '../core/motion'
+import { rekeyNodes } from '../core/node-identity'
 import {
   ACTIVE_PROJECT_KEY,
   getProject,
@@ -179,14 +180,7 @@ export const useEditorStore = defineStore('editor', () => {
       const loc = findLocation(doc.nodes, id)
       if (!loc) return
       const node = clone(loc.siblings[loc.index]!)
-      const rekey = (n: PageNode) => {
-        n.id = crypto.randomUUID()
-        n.animation.keyframes.forEach((frame) => {
-          frame.id = crypto.randomUUID()
-        })
-        n.children.forEach(rekey)
-      }
-      rekey(node)
+      rekeyNodes([node])
       node.name += ' 副本'
       loc.siblings.splice(loc.index + 1, 0, node)
       duplicatedId = node.id

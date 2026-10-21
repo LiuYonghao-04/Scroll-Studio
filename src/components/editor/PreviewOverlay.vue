@@ -7,8 +7,11 @@ import { previewSrc } from '../../core/assets'
 import { deviceWidths, type Device } from '../../types/editor'
 import { compileSequence } from '../../core/motion'
 import type { PlaybackState, PreviewMode } from '../../animation/runtime'
+import { useModalDialog } from '../../composables/useModalDialog'
+const dialog = ref<HTMLDialogElement>()
+useModalDialog(dialog)
 const props = defineProps<{ initialMode: PreviewMode }>()
-defineEmits<{ close: [] }>()
+const emit = defineEmits<{ close: [] }>()
 const store = useEditorStore()
 const frame = ref<HTMLIFrameElement>()
 const device = ref<Device>('desktop')
@@ -47,6 +50,15 @@ function receive(event: MessageEvent<unknown>) {
   )
     return
   const data = event.data as Record<string, unknown>
+  if (data.requestId === requestId) {
+    if (data.type === 'scroll-studio:close-preview') emit('close')
+    if (data.type === 'scroll-studio:focus-boundary' && typeof data.backward === 'boolean') {
+      const controls = [
+        ...(dialog.value?.querySelectorAll<HTMLElement>('button, input') ?? []),
+      ].filter((element) => !element.matches(':disabled') && element.getClientRects().length > 0)
+      ;(data.backward ? controls.at(-1) : controls[0])?.focus()
+    }
+  }
   if (data.type === 'scroll-studio:ready') send()
   if (
     data.type === 'scroll-studio:playback' &&
@@ -80,12 +92,11 @@ onMounted(async () => {
 onBeforeUnmount(() => window.removeEventListener('message', receive))
 </script>
 <template>
-  <div
+  <dialog
+    ref="dialog"
     class="preview-overlay"
-    role="dialog"
-    aria-modal="true"
     aria-label="页面实时预览"
-    @keydown.esc="$emit('close')"
+    @cancel.prevent="$emit('close')"
   >
     <header>
       <span
@@ -175,5 +186,5 @@ onBeforeUnmount(() => window.removeEventListener('message', receive))
       {{ deviceWidths[device] }} px · 独立视口 ·
       {{ device === 'mobile' ? '手机' : device === 'tablet' ? '平板' : '桌面' }}预览
     </footer>
-  </div>
+  </dialog>
 </template>

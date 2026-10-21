@@ -3,6 +3,9 @@ import { nextTick, onMounted, ref } from 'vue'
 import { X, ArrowUpRight } from '@lucide/vue'
 import { templates } from '../../core/templates'
 import type { TemplateId } from '../../types/project'
+import { useModalDialog } from '../../composables/useModalDialog'
+const dialog = ref<HTMLDialogElement>()
+useModalDialog(dialog)
 const props = defineProps<{ create: (template: TemplateId, name: string) => Promise<void> }>()
 const emit = defineEmits<{ close: [] }>()
 const selected = ref<TemplateId>('blank'),
@@ -35,13 +38,14 @@ onMounted(async () => {
 })
 </script>
 <template>
-  <div class="modal-backdrop" @click.self="close" @keydown.esc.stop="close">
-    <section
-      class="project-dialog create-project-dialog"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="create-project-title"
-    >
+  <dialog
+    ref="dialog"
+    class="modal-backdrop"
+    aria-labelledby="create-project-title"
+    @click.self="close"
+    @cancel.prevent="close"
+  >
+    <section class="project-dialog create-project-dialog">
       <button
         class="icon-button project-dialog-close"
         aria-label="关闭新建作品"
@@ -82,5 +86,5 @@ onMounted(async () => {
         </footer>
       </form>
     </section>
-  </div>
+  </dialog>
 </template>

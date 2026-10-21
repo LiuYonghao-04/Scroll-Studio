@@ -21,6 +21,9 @@ import { useProjectsStore } from '../stores/projects'
 import type { ProjectSummary, TemplateId } from '../types/project'
 import { getProject } from '../services/projects'
 import { MAX_DOCUMENT_BYTES } from '../core/media'
+import { useModalDialog } from '../composables/useModalDialog'
+const actionDialog = ref<HTMLDialogElement>()
+useModalDialog(actionDialog)
 const store = useProjectsStore(),
   router = useRouter()
 const creating = ref(false),
@@ -59,7 +62,16 @@ async function act(action: () => Promise<unknown>) {
     busy.value = false
   }
 }
-async function openOperation(project: ProjectSummary, kind: 'rename' | 'delete') {
+function openCreate(event: MouseEvent) {
+  ;(event.currentTarget as HTMLElement).focus()
+  creating.value = true
+}
+async function openOperation(
+  project: ProjectSummary,
+  kind: 'rename' | 'delete',
+  event: MouseEvent,
+) {
+  ;(event.currentTarget as HTMLElement).focus()
   operation.value = { project, kind }
   name.value = project.document.name
   await nextTick()
@@ -126,7 +138,7 @@ onMounted(refresh)
           <button
             class="btn dark"
             :disabled="busy || store.loading || !!store.error"
-            @click="creating = true"
+            @click="openCreate"
           >
             <Plus :size="17" />新建作品
           </button>
@@ -180,7 +192,7 @@ onMounted(refresh)
           <p>
             {{ search ? '换个关键词，继续寻找。' : '创建第一件作品，或者导入以前保存的 JSON。' }}
           </p>
-          <button v-if="!search" class="btn" @click="creating = true">
+          <button v-if="!search" class="btn" @click="openCreate">
             <Plus :size="15" />创建第一件作品
           </button>
         </div>
@@ -210,7 +222,7 @@ onMounted(refresh)
                   class="icon-button"
                   :aria-label="`重命名 ${project.document.name}`"
                   :disabled="busy"
-                  @click="openOperation(project, 'rename')"
+                  @click="openOperation(project, 'rename', $event)"
                 >
                   <Pencil :size="15" /></button
                 ><button
@@ -231,7 +243,7 @@ onMounted(refresh)
                   class="icon-button"
                   :aria-label="`删除 ${project.document.name}`"
                   :disabled="busy"
-                  @click="openOperation(project, 'delete')"
+                  @click="openOperation(project, 'delete', $event)"
                 >
                   <Trash2 :size="15" />
                 </button>
@@ -253,18 +265,15 @@ onMounted(refresh)
       />
     </div>
     <ProjectCreateDialog v-if="creating" :create="create" @close="creating = false" />
-    <div
+    <dialog
       v-if="operation"
+      ref="actionDialog"
       class="modal-backdrop"
+      aria-labelledby="project-action-title"
       @click.self="!busy && (operation = undefined)"
-      @keydown.esc="!busy && (operation = undefined)"
+      @cancel.prevent="!busy && (operation = undefined)"
     >
-      <section
-        class="project-dialog compact-project-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="project-action-title"
-      >
+      <section class="project-dialog compact-project-dialog">
         <h2 id="project-action-title">
           {{ operation.kind === 'rename' ? '为作品换个名字' : '删除这件作品？' }}
         </h2>
@@ -295,6 +304,6 @@ onMounted(refresh)
           </footer>
         </form>
       </section>
-    </div>
+    </dialog>
   </div>
 </template>

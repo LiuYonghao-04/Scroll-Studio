@@ -2,11 +2,15 @@ import assert from 'node:assert/strict'
 import { mkdir, readFile } from 'node:fs/promises'
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
-import { chromium, type Page } from 'playwright'
+import { chromium, firefox, webkit, type Page } from 'playwright'
 import { verifyWebsiteExport, verifyShowcaseTemplates } from './verify-export.ts'
+import { verifyRelease } from './verify-release.ts'
 
 const base = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:4173/Scroll-Studio/'
-const output = 'output/playwright/pages-smoke'
+const engine = process.env.SMOKE_BROWSER ?? 'chromium'
+if (engine !== 'chromium' && engine !== 'firefox' && engine !== 'webkit')
+  throw new Error(`Unsupported smoke browser: ${engine}`)
+const output = `output/playwright/pages-smoke${engine === 'chromium' ? '' : `-${engine}`}`
 await mkdir(output, { recursive: true })
 const server = process.env.SMOKE_BASE_URL
   ? undefined
@@ -33,7 +37,7 @@ server?.stderr?.on('data', (data: Buffer) => {
   serverLog += data.toString()
 })
 const errors: string[] = []
-const browser = await chromium.launch()
+const browser = await { chromium, firefox, webkit }[engine].launch()
 const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } })
 const page = await context.newPage()
 page.setDefaultTimeout(15_000)
@@ -209,13 +213,13 @@ try {
     `${new URL(base).pathname}#/render`,
   )
   await page.getByRole('button', { name: '预览mobile', exact: true }).click()
-  await frame
-    .getByRole('heading', { name: '公开体验版自动验收', exact: true })
-    .locator('..')
-    .evaluate((element) => {
-      if (getComputedStyle(element).fontSize !== '28px')
-        throw new Error('Mobile override missing from preview')
-    })
+  await page.waitForFunction(() => {
+    const view = document.querySelector<HTMLIFrameElement>('iframe')?.contentWindow
+    const heading = [...(view?.document.querySelectorAll('h2') ?? [])].find(
+      (element) => element.textContent === '公开体验版自动验收',
+    )?.parentElement
+    return view && heading && view.getComputedStyle(heading).fontSize === '28px'
+  })
   await frame
     .locator('img')
     .evaluateAll((images) =>
@@ -342,9 +346,10 @@ try {
   await page.keyboard.press('Escape')
   await page.screenshot({ path: `${output}/projects-mobile.png`, fullPage: true })
   await verifyShowcaseTemplates(browser, base, output)
+  await verifyRelease(browser, base, output, backup)
   assert.deepEqual(errors, [], 'Runtime or local resource failures')
   console.log(
-    `PASS: v0.7 ZIP export, file/offline and HTTP subpath, reduced/no-JS, animations, cancel/failure, showcase templates; v0.6 responsive/media and project recovery: ${base}`,
+    `PASS [${engine}]: 1.0 modal keyboard/focus, background save, reduced-motion switch, exported responsive reset; ZIP file/offline/HTTP, animations, templates, responsive/media and project recovery: ${base}`,
   )
 } catch (error) {
   await page.screenshot({ path: `${output}/failure.png`, fullPage: true }).catch(() => {})

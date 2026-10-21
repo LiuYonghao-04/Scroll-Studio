@@ -70,6 +70,7 @@ const zoom = computed(() =>
   Math.min(1, Math.max(0.15, (stageWidth.value - 64) / deviceWidths[device.value])),
 )
 let observer: ResizeObserver | undefined
+let resizeFrame = 0
 let timer: ReturnType<typeof setTimeout> | undefined
 watch(
   () => store.document,
@@ -175,10 +176,29 @@ async function importJson(event: Event) {
   menu.value = false
 }
 function shortcuts(event: KeyboardEvent) {
+  if (
+    preview.value ||
+    newPage.value ||
+    exporting.value ||
+    initializing.value ||
+    routeError.value ||
+    (event.target instanceof Element && event.target.closest('dialog[open]'))
+  ) {
+    const editingDialog =
+      event.target instanceof Element &&
+      event.target.closest('dialog[open]') &&
+      event.target.closest('input, textarea, select, [contenteditable]')
+    if (
+      !editingDialog &&
+      (event.key === 'Delete' ||
+        event.key === 'Backspace' ||
+        ((event.metaKey || event.ctrlKey) && ['z', 'y', 's'].includes(event.key.toLowerCase())))
+    )
+      event.preventDefault()
+    return
+  }
   if (event.key === 'Escape') {
-    preview.value = false
     menu.value = false
-    newPage.value = false
     return
   }
   if (
@@ -208,9 +228,21 @@ function shortcuts(event: KeyboardEvent) {
   }
 }
 function beforeUnload(event: BeforeUnloadEvent) {
-  if (store.dirty && !store.journal()) event.preventDefault()
+  if (store.dirty && !store.journal()) {
+    event.preventDefault()
+    event.returnValue = ''
+  }
+}
+function persistOnHide() {
+  if (!store.dirty || initializing.value) return
+  store.journal()
+  void store.autosave()
+}
+function visibilityChanged() {
+  if (document.visibilityState === 'hidden') persistOnHide()
 }
 function openPreview(mode: PreviewMode = 'scroll') {
+  previewButton.value?.focus()
   previewMode.value = mode
   preview.value = true
 }
@@ -228,20 +260,29 @@ async function closePreview() {
 }
 onMounted(() => {
   observer = new ResizeObserver((entries) => {
-    stageWidth.value = entries[0]?.contentRect.width ?? 900
+    const width = entries[0]?.contentRect.width ?? 900
+    cancelAnimationFrame(resizeFrame)
+    resizeFrame = requestAnimationFrame(() => {
+      stageWidth.value = width
+    })
   })
   if (stage.value) observer.observe(stage.value)
   window.addEventListener('keydown', shortcuts)
   window.addEventListener('beforeunload', beforeUnload)
+  window.addEventListener('pagehide', persistOnHide)
+  document.addEventListener('visibilitychange', visibilityChanged)
 })
 watch(() => route.params.projectId, openRoute, { immediate: true })
 onBeforeUnmount(() => {
   opening++
   store.cancelOpening()
   observer?.disconnect()
+  cancelAnimationFrame(resizeFrame)
   clearTimeout(timer)
   window.removeEventListener('keydown', shortcuts)
   window.removeEventListener('beforeunload', beforeUnload)
+  window.removeEventListener('pagehide', persistOnHide)
+  document.removeEventListener('visibilitychange', visibilityChanged)
   if (store.dirty) store.autosave()
 })
 </script>

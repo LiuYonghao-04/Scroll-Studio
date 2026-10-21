@@ -7,14 +7,21 @@ export function useDragDrop() {
   const store = useEditorStore()
   function start(event: DragEvent, payload: DragPayload) {
     if (!event.dataTransfer) return
-    event.dataTransfer.setData(MIME, JSON.stringify(payload))
+    const json = JSON.stringify(payload)
+    event.dataTransfer.setData(MIME, json)
+    // Some WebKit ports strip custom MIME data during a native drag.
+    event.dataTransfer.setData('text/plain', `${MIME}:${json}`)
     event.dataTransfer.effectAllowed = payload.kind === 'move' ? 'move' : 'copy'
   }
   function drop(event: DragEvent, parentId: string | null, index?: number) {
     event.preventDefault()
     event.stopPropagation()
     try {
-      const raw: unknown = JSON.parse(event.dataTransfer?.getData(MIME) ?? '')
+      const text = event.dataTransfer?.getData('text/plain') ?? ''
+      const json =
+        event.dataTransfer?.getData(MIME) ||
+        (text.startsWith(`${MIME}:`) ? text.slice(MIME.length + 1) : '')
+      const raw: unknown = JSON.parse(json)
       if (
         typeof raw !== 'object' ||
         !raw ||

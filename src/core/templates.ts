@@ -1,5 +1,5 @@
 import { clone, createNode, newDocument, parseDocument } from './document'
-import { flattenNodes } from './motion'
+import { rekeyNodes } from './node-identity'
 import type { NodeKind, PageDocument, PageNode } from '../types/editor'
 import type { TemplateId } from '../types/project'
 import { createShowcase } from './showcase'
@@ -139,23 +139,11 @@ export function createTemplate(id: TemplateId): PageDocument {
   return parseDocument(doc)
 }
 export function duplicateDocument(original: PageDocument): PageDocument {
-  const doc = clone(original),
-    mapping = new Map<string, string>()
+  const doc = clone(original)
   doc.id = crypto.randomUUID()
   doc.name = `${original.name} 副本`
   doc.updatedAt = new Date().toISOString()
-  for (const node of flattenNodes(doc.nodes)) {
-    const id = crypto.randomUUID()
-    mapping.set(node.id, id)
-    node.id = id
-    node.animation.keyframes.forEach((frame) => {
-      frame.id = crypto.randomUUID()
-    })
-  }
-  for (const node of flattenNodes(doc.nodes)) {
-    if (node.href.startsWith('#') && mapping.has(node.href.slice(1)))
-      node.href = `#${mapping.get(node.href.slice(1))}`
-  }
+  const mapping = rekeyNodes(doc.nodes)
   if (doc.timeline.triggerNodeId)
     doc.timeline.triggerNodeId = mapping.get(doc.timeline.triggerNodeId) ?? null
   return parseDocument(doc)
