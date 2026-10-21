@@ -3,7 +3,7 @@ import { mkdir, readFile } from 'node:fs/promises'
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { chromium, type Page } from 'playwright'
-import { verifyWebsiteExport } from './verify-export.ts'
+import { verifyWebsiteExport, verifyShowcaseTemplates } from './verify-export.ts'
 
 const base = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:4173/Scroll-Studio/'
 const output = 'output/playwright/pages-smoke'
@@ -328,9 +328,10 @@ try {
   await page.screenshot({ path: `${output}/guide-mobile.png` })
   await page.keyboard.press('Escape')
   await page.screenshot({ path: `${output}/projects-mobile.png`, fullPage: true })
+  await verifyShowcaseTemplates(browser, base, output)
   assert.deepEqual(errors, [], 'Runtime or local resource failures')
   console.log(
-    `PASS: v0.6 responsive inheritance/reset, local image upload/rename/use/delete/undo, block and motion presets, portable media backup; guide, edit, save/reload, preview, quota/retry, import and mobile: ${base}`,
+    `PASS: v0.7 ZIP export, file/offline and HTTP subpath, reduced/no-JS, animations, cancel/failure, showcase templates; v0.6 responsive/media and project recovery: ${base}`,
   )
 } catch (error) {
   await page.screenshot({ path: `${output}/failure.png`, fullPage: true }).catch(() => {})

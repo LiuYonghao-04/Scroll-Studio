@@ -45,3 +45,24 @@
 .export-dialog .media-error {
   margin: 14px 0 0;
 }
+@media (max-width: 700px) {
+  .editor-header {
+    gap: 8px;
+  }
+  .editor-header > .toolbar-group:first-child {
+    flex: 1;
+    min-width: 0;
+  }
+  .editor-header > .toolbar-group:last-child {
+    flex-shrink: 0;
+  }
+  .editor-header .document-menu {
+    min-width: 0;
+  }
+  .editor-header .document-menu-button {
+    max-width: 100%;
+  }
+  .editor-header button[aria-label='导出网站 ZIP'] {
+    display: none;
+  }
+}

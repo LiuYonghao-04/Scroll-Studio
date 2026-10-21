@@ -5,6 +5,7 @@ import { compileHtml, cssText } from '../src/export/compiler'
 import { preflight } from '../src/export/preflight'
 import { buildArchive } from '../src/export/archive'
 import { nodeStyle } from '../src/core/render-style'
+import { createTemplate } from '../src/core/templates'
 
 const loader = async (url: string) =>
   strToU8(
@@ -64,6 +65,14 @@ describe('static site compiler', () => {
   })
 })
 describe('preflight checks', () => {
+  it.each(['studio', 'launch'] as const)(
+    'has complete, valid %s showcase templates with no broken links',
+    (id) => {
+      const doc = createTemplate(id)
+      expect(preflight(doc).filter((issue) => issue.level !== 'info')).toEqual([])
+      expect(compileHtml(doc).html).toContain('示例模板')
+    },
+  )
   it('blocks empty or invalid documents but allows an ordinary text page', () => {
     expect(preflight(newDocument()).some((issue) => issue.level === 'error')).toBe(true)
     const doc = newDocument()
@@ -90,6 +99,15 @@ describe('preflight checks', () => {
   })
 })
 describe('ZIP package', () => {
+  it('stops an aborted export before requesting resources or producing bytes', async () => {
+    const controller = new AbortController(),
+      fetch = vi.fn(loader)
+    controller.abort()
+    await expect(
+      buildArchive(newDocument(true), fetch, undefined, controller.signal),
+    ).rejects.toThrow()
+    expect(fetch).not.toHaveBeenCalled()
+  })
   it('includes actual HTML, CSS, local animation resources, default images and a restorable project', async () => {
     const doc = newDocument(true),
       original = JSON.stringify(doc),

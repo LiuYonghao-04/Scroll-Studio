@@ -26,6 +26,16 @@ npm run preview
 
 生产产物在 `dist/`。GitHub Pages 通过 Actions 部署公开体验版；无需账号或后端服务。使用 `npm ci` 保持 lockfile 对应版本；TypeScript 固定在 5.9 系列，避开本次发现的 TS 7 与 vue-tsc 内部入口兼容问题。
 
+## 0.7 · 把作品导出为网站
+
+- 从编辑器顶部下载图标或页面菜单「导出网站 ZIP」进入发布前检查；手机使用页面菜单入口。
+- ZIP 包含真实 HTML、三个断点 CSS、本地动画运行文件、图片、可重新编辑的 project.json 与第三方许可说明；解压后可直接打开 index.html，或整体上传静态托管。
+- 预览与导出共用样式计算和动画运行逻辑，支持关键帧、共享时间轴、滚动触发与减弱动态效果；关闭 JavaScript 仍能阅读静态内容。
+- 检查空白页、无效图片、图片描述、链接、锚点和固定高度。外部图片受 CORS 限制时明确失败，不生成缺图成品；支持取消导出。
+- 新增「创意工作室」「新品发布页」两个完整示例，共有五个内容模板和空白画布。
+
+完整使用步骤、图片限制、字体回退及部署方法见 [网站导出指南](docs/WEBSITE_EXPORT.md)。
+
 ## 0.6 · 响应式创作与本地素材
 
 - 桌面 / 平板 / 手机独立样式，画布与属性联动，可重置继承及撤销重做。
@@ -38,7 +48,7 @@ npm run preview
 
 ## 公开体验版部署
 
-推送 `main` 后，GitHub Actions 自动安装锁定依赖、运行 95 项单元测试、严格类型检查、Pages 构建和 Chromium 核心流程检查；全部通过后才部署。PR 执行相同检查，但不发布网站。
+推送 `main` 后，GitHub Actions 自动安装锁定依赖、运行 109 项单元测试、严格类型检查、Pages 构建和 Chromium 核心流程检查；全部通过后才部署。PR 执行相同检查，但不发布网站。
 
 ```sh
 npm run build:pages
@@ -92,7 +102,7 @@ npm run preview:pages
 - 没有自由绝对坐标拖放、画布缩放手柄、网格吸附或任意组件尺寸编辑；位置由布局顺序、容器和间距决定。
 - 没有富文本、视频 / 音频素材、跨作品共享素材库或任意自定义断点。本地图片库按作品隔离，也可使用图片 URL。
 - 没有 pin、多场景时间轴、循环/yoyo、贝塞尔自定义曲线、拖动时自动横向滚动或多个轨道同时选中；精确数值也可在右侧面板编辑。
-- 没有 HTML 导出、用户作品的独立线上发布、账号、后端、多人协作、支付、订阅或云端同步。GitHub Pages 托管的是编辑器体验网站，不会自动托管访问者的作品。
+- 已支持静态 HTML 网站 ZIP 导出，但没有替用户自动发布、账号、后端、多人协作、支付、订阅或云端同步。GitHub Pages 托管编辑器，用户作品可下载后自行部署。
 - 桌面 HTML Drag and Drop 是首选；手机端使用点击添加与排序按钮，不承诺原生触摸拖拽兼容。
 - 历史最多 60 步，仅在当前作品编辑会话保留；刷新或切换作品清空 undo 堆栈。
 - 本地存储与浏览器/域名绑定，浏览器清理存储会删除草稿；存储故障时可导出 JSON 备份。
@@ -112,12 +122,14 @@ Scroll Studio/
 ├── package-lock.json
 ├── tsconfig.json
 ├── vite.config.ts
+├── vite.export.config.ts
 ├── README.md
 ├── THIRD_PARTY_NOTICES.md
 ├── 任务要求.md                    # 保留用户原始要求
 ├── docs/
 │   ├── DEPLOYMENT.md
 │   ├── EDITOR_V06.md
+│   ├── WEBSITE_EXPORT.md
 │   ├── UPSTREAM_AUDIT.md
 │   ├── ARCHITECTURE.md
 │   ├── ANIMATION_EDITOR.md
@@ -127,6 +139,8 @@ Scroll Studio/
 │   ├── favicon.svg
 │   └── images/landscape.svg
 ├── scripts/smoke.ts
+├── scripts/verify-export.ts
+├── scripts/export-notices.ts
 ├── src/
 │   ├── App.vue
 │   ├── main.ts
@@ -135,6 +149,8 @@ Scroll Studio/
 │   ├── core/document.ts
 │   ├── core/assets.ts
 │   ├── core/responsive.ts
+│   ├── core/render-style.ts
+│   ├── core/showcase.ts
 │   ├── core/media.ts
 │   ├── core/presets.ts
 │   ├── core/motion.ts
@@ -154,6 +170,8 @@ Scroll Studio/
 │   ├── styles/editor-motion.css
 │   ├── styles/projects.css
 │   ├── styles/editor-v06.css
+│   ├── styles/export.css
+│   ├── export/                      # 编译器、ZIP、检查、独立运行入口与共享页面 CSS
 │   ├── components/
 │   │   ├── ui/BrandMark.vue
 │   │   ├── home/StudioPreview.vue
@@ -161,6 +179,7 @@ Scroll Studio/
 │   │   └── editor/
 │   │       ├── ComponentLibrary.vue
 │   │       ├── MediaLibrary.vue
+│   │       ├── ExportDialog.vue
 │   │       ├── QuickStartGuide.vue
 │   │       ├── LayerTree.vue
 │   │       ├── NodeRenderer.vue
@@ -179,7 +198,8 @@ Scroll Studio/
     ├── motion.test.ts
     ├── timeline-edit.test.ts
     ├── projects.test.ts
-    └── v06.test.ts
+    ├── v06.test.ts
+    └── export.test.ts
 ```
 
 业务源码仅 `.ts` / `.vue`，Vue SFC 均为 `<script setup lang="ts">`；没有自写 `.js` / `.jsx`。第三方依赖和构建输出的 JavaScript 不属于业务源文件。架构数据流和模块边界见 [ARCHITECTURE](docs/ARCHITECTURE.md)。
@@ -191,6 +211,6 @@ Scroll Studio/
 ## 下一阶段
 
 1. 先确认可视化动画编辑产品的 GSAP 授权范围，再决定公开发布路线。
-2. 0.7 完成静态网站 ZIP 导出，打包图片和动画运行资源，增加发布前检查与正式示例模板，验证导出与预览一致。
-3. 1.0 冻结功能，集中修复兼容性、迁移、备份恢复、可访问性和性能问题，完成正式发布验收。
+2. 0.7 功能已实现：网站 ZIP、图片与动画打包、发布前检查、示例模板；不再扩张本次功能范围。
+3. 下一轮 1.0 冻结功能，集中修复兼容性、迁移、备份恢复、可访问性和性能问题，完成正式发布验收。
 4. 多页面、云端同步、账号与多人协作不属于本次 1.0 范围；GitHub Pages 继续托管编辑器。

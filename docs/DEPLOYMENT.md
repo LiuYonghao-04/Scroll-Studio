@@ -13,6 +13,8 @@
 
 Actions 固定到已核验的官方 action commit；Node 使用 22 系列。CI 失败不会发布失败构建，原有线上版本仍保留。
 
+0.7 构建先执行独立动画运行文件编译与版权说明生成，再构建编辑器。禁止跳过 `build:runtime` 直接将缺少 public/export-runtime 的产物发布。`test:smoke` 额外下载 ZIP，检查 file://、静态 HTTP 子目录、图片、响应式、动画、减弱动态效果、禁用 JavaScript、取消和失败，以及两个示例模板。
+
 ## 本地复现
 
 ```sh

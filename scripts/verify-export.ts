@@ -7,6 +7,19 @@ import { unzipSync } from 'fflate'
 import type { Browser, Page } from 'playwright'
 
 export async function verifyWebsiteExport(page: Page, browser: Browser, output: string) {
+  let release = async () => {}
+  await page.route('**/export-runtime/runtime.js', (route) => {
+    release = () => route.abort().catch(() => {})
+  })
+  await page.getByRole('button', { name: '导出网站 ZIP', exact: true }).click()
+  const pendingRuntime = page.waitForRequest((request) =>
+    request.url().endsWith('/export-runtime/runtime.js'),
+  )
+  await page.getByRole('button', { name: '下载网站 ZIP', exact: true }).click()
+  await pendingRuntime
+  await page.getByRole('button', { name: '取消导出', exact: true }).click()
+  await release()
+  await page.unroute('**/export-runtime/runtime.js')
   await page.getByRole('button', { name: '导出网站 ZIP', exact: true }).click()
   await page.getByRole('dialog', { name: '把作品，带到更大的世界。' }).waitFor()
   await page.screenshot({ path: `${output}/export-dialog.png` })
@@ -149,5 +162,78 @@ export async function verifyWebsiteExport(page: Page, browser: Browser, output: 
   } finally {
     await context.close()
     await new Promise<void>((resolveClosed) => staticServer.close(() => resolveClosed()))
+  }
+  // An unreadable external image must not produce an incomplete download.
+  await page.locator('.canvas-page .page-node.image img').first().click()
+  await page.getByRole('button', { name: '改用网络图片', exact: true }).click()
+  const address = page.getByRole('textbox', { name: /^图片地址/ })
+  await page.route('https://example.com/export-failure.png', (route) => route.abort())
+  await address.fill('https://example.com/export-failure.png')
+  await address.press('Tab')
+  await page.getByRole('button', { name: '导出网站 ZIP', exact: true }).click()
+  await page.getByRole('button', { name: '下载网站 ZIP', exact: true }).click()
+  await page.getByRole('alert').filter({ hasText: '请先在素材库上传' }).waitFor()
+  await page.getByRole('button', { name: '返回编辑', exact: true }).click()
+  await page.getByRole('button', { name: '撤销', exact: true }).click()
+  await page.getByRole('button', { name: '撤销', exact: true }).click()
+  await page.waitForFunction(() =>
+    document.querySelector<HTMLImageElement>('.canvas-page img')?.src.startsWith('data:image/'),
+  )
+  await page.unroute('https://example.com/export-failure.png')
+}
+
+export async function verifyShowcaseTemplates(browser: Browser, base: string, output: string) {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } })
+  await context.route(/https:\/\/fonts\.(googleapis|gstatic)\.com\//, (route) => route.abort())
+  const page = await context.newPage(),
+    errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  try {
+    await page.goto(`${base}#/projects`)
+    await page.getByRole('button', { name: '开始创作', exact: true }).click()
+    for (const [id, template] of [
+      ['studio', '创意工作室'],
+      ['launch', '新品发布页'],
+    ] as const) {
+      const name = `0.7 ${template}`
+      await page.getByRole('button', { name: '新建作品', exact: true }).click()
+      await page.getByRole('button', { name: new RegExp(`^${template}`) }).click()
+      await page.getByRole('textbox', { name: '作品名称', exact: true }).fill(name)
+      await page.getByRole('button', { name: '创建并打开', exact: true }).click()
+      await page.getByRole('button', { name, exact: true }).waitFor()
+      await page.getByRole('button', { name: '预览', exact: true }).click()
+      const frame = page.frameLocator('iframe[title="独立页面预览"]')
+      await frame
+        .getByRole('heading', { name: id === 'studio' ? /用设计/ : /少一点噪声/ })
+        .waitFor()
+      await page.getByRole('button', { name: '预览mobile', exact: true }).click()
+      await frame.locator('main').evaluate((element) => {
+        if (element.scrollWidth > 390) throw new Error('Showcase mobile preview overflows')
+      })
+      await page.screenshot({ path: `${output}/template-${id}.png` })
+      await page.getByRole('button', { name: '关闭预览', exact: true }).click()
+      await page.getByRole('button', { name: '导出网站 ZIP', exact: true }).click()
+      assert.equal(await page.locator('.export-issues .error, .export-issues .warning').count(), 0)
+      const download = page.waitForEvent('download')
+      await page.getByRole('button', { name: '下载网站 ZIP', exact: true }).click()
+      await (await download).saveAs(`${output}/template-${id}.zip`)
+      await page.getByRole('button', { name: '返回编辑', exact: true }).click()
+      await page.setViewportSize({ width: 390, height: 844 })
+      const header = await page.locator('.editor-header').boundingBox()
+      assert.ok(header && header.width <= 390)
+      assert.ok(
+        await page.evaluate(
+          () => document.querySelector('.editor-header')!.scrollWidth <= innerWidth,
+        ),
+        'Editor mobile toolbar overflows',
+      )
+      await page.setViewportSize({ width: 1440, height: 1000 })
+      await page.getByRole('button', { name, exact: true }).click()
+      await page.getByRole('link', { name: '我的作品', exact: true }).click()
+      await page.getByRole('link', { name: `打开 ${name}`, exact: true }).waitFor()
+    }
+    assert.equal(errors.length, 0, errors.join('\n'))
+  } finally {
+    await context.close()
   }
 }

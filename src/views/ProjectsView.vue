@@ -119,7 +119,7 @@ onMounted(refresh)
       <main class="projects-main">
         <div class="projects-heading">
           <div>
-            <span class="project-eyebrow">YOUR CREATIVE SPACE / 0.6</span>
+            <span class="project-eyebrow">YOUR CREATIVE SPACE / 0.7</span>
             <h1>每个想法，都有自己的位置。</h1>
             <p>继续打磨正在生长的作品，或开始一次新的探索。</p>
           </div>

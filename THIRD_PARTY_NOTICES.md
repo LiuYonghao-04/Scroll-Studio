@@ -9,8 +9,11 @@ Scroll Studio 的应用源码、布局、图形与示例文案为本次独立实
 | Vue Router           | MIT，保留包内 LICENSE                                                                                               |
 | @lucide/vue          | ISC，保留包内 LICENSE；图标设计归 Lucide 及贡献者                                                                   |
 | GSAP / ScrollTrigger | [GSAP Standard License](https://gsap.com/community/standard-license/)，不是 MIT；可视化动画工具用途的限制见审计文档 |
+| fflate               | MIT，0.7 用于创建 ZIP，保留包内 LICENSE                                                                             |
 
 构建与测试工具按各自包内许可使用，不将依赖的编译 JS 视为自行编写的业务 JS。
+
+0.7 的独立网页运行文件从 TypeScript 与项目安装的 GSAP / ScrollTrigger 构建，不依赖 CDN。ZIP 附带 GSAP 包头版权声明、官方许可地址与 fflate 许可原文；安装的 GSAP 包未附单独 LICENSE 文件，因此不声称包内有完整许可原文。导出器及可视化动画搭建用途的 GSAP 许可适用性仍需确认。
 
 0.5 的 `playwright` 为开发测试依赖，使用包内 Apache-2.0 许可；只用于本地与 CI 浏览器检查，不进入网站运行时。
 
