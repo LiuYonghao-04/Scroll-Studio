@@ -14,6 +14,8 @@ const frame = ref<HTMLIFrameElement>()
 const device = ref<Device>('desktop')
 const mode = ref<PreviewMode>(props.initialMode)
 const closeButton = ref<HTMLButtonElement>()
+const playbackReady = ref(false)
+let requestId = 0
 const playback = ref<PlaybackState>({
   time: 0,
   duration: compileSequence(store.document.nodes).duration,
@@ -21,15 +23,18 @@ const playback = ref<PlaybackState>({
   reducedMotion: false,
 })
 function send() {
+  requestId++
+  playbackReady.value = false
   playback.value.playing = false
   frame.value?.contentWindow?.postMessage(
-    { type: 'scroll-studio:preview', document: clone(store.document), mode: mode.value },
+    { type: 'scroll-studio:preview', document: clone(store.document), mode: mode.value, requestId },
     location.origin,
   )
 }
 function transport(action: 'seek' | 'play' | 'pause', time?: number) {
+  if (!playbackReady.value) return
   frame.value?.contentWindow?.postMessage(
-    { type: 'scroll-studio:transport', action, time },
+    { type: 'scroll-studio:transport', action, time, requestId },
     location.origin,
   )
 }
@@ -45,6 +50,7 @@ function receive(event: MessageEvent<unknown>) {
   if (data.type === 'scroll-studio:ready') send()
   if (
     data.type === 'scroll-studio:playback' &&
+    data.requestId === requestId &&
     typeof data.time === 'number' &&
     Number.isFinite(data.time) &&
     typeof data.duration === 'number' &&
@@ -52,6 +58,7 @@ function receive(event: MessageEvent<unknown>) {
     typeof data.playing === 'boolean' &&
     typeof data.reducedMotion === 'boolean'
   ) {
+    playbackReady.value = true
     playback.value = {
       time: data.time,
       duration: data.duration,
@@ -126,7 +133,7 @@ onBeforeUnmount(() => window.removeEventListener('message', receive))
       <template v-if="mode === 'timeline' && playback.duration > 0">
         <button
           class="icon-button"
-          :disabled="playback.reducedMotion"
+          :disabled="!playbackReady || playback.reducedMotion"
           :aria-label="playback.playing ? '暂停时间轴' : '播放时间轴'"
           @click="transport(playback.playing ? 'pause' : 'play')"
         >
@@ -139,7 +146,7 @@ onBeforeUnmount(() => window.removeEventListener('message', receive))
           :max="playback.duration"
           step="0.01"
           :value="playback.time"
-          :disabled="playback.reducedMotion"
+          :disabled="!playbackReady || playback.reducedMotion"
           @input="seek"
         />
         <output class="playback-time"

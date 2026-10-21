@@ -223,15 +223,28 @@ try {
     )
   await page.getByRole('button', { name: '时间轴试播', exact: true }).click()
   const progress = page.getByRole('slider', { name: '时间轴播放进度', exact: true })
+  await progress.waitFor({ state: 'visible' })
+  await page.waitForFunction(
+    () =>
+      document.querySelector<HTMLInputElement>('[aria-label="时间轴播放进度"]')?.disabled === false,
+  )
   await progress.focus()
   await progress.press('End')
-  await frame
-    .getByRole('heading', { name: '公开体验版自动验收', exact: true })
-    .locator('..')
-    .evaluate((element) => {
-      if (Number(getComputedStyle(element).opacity) < 0.99)
-        throw new Error('Preset animation did not reach its final frame')
-    })
+  // postMessage transport is asynchronous; verify the rendered result after its acknowledgement.
+  await page.waitForFunction(() => {
+    const input = document.querySelector<HTMLInputElement>('[aria-label="时间轴播放进度"]')
+    const preview = document.querySelector<HTMLIFrameElement>('iframe')?.contentWindow
+    const node = [...(preview?.document.querySelectorAll('h2') ?? [])].find(
+      (heading) => heading.textContent === '公开体验版自动验收',
+    )?.parentElement
+    return (
+      input &&
+      input.value === input.max &&
+      node &&
+      preview &&
+      Number(preview.getComputedStyle(node).opacity) >= 0.99
+    )
+  })
   await page.getByRole('button', { name: '关闭预览', exact: true }).click()
   await page.getByRole('heading', { name: '公开体验版自动验收', exact: true }).click()
   await page.locator('.properties .panel-tabs button').filter({ hasText: '属性' }).click()

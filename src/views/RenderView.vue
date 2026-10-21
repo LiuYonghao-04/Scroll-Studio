@@ -17,17 +17,24 @@ const device = ref(deviceForWidth(window.innerWidth))
 let observer: ResizeObserver | undefined
 let player: AnimationPlayer | undefined
 let revision = 0
-async function render(input: unknown, mode: PreviewMode = 'scroll') {
+let activeRequest: number | undefined
+async function render(input: unknown, mode: PreviewMode = 'scroll', requestId = 0) {
   try {
     const next = parseDocument(input)
     const current = ++revision
+    activeRequest = undefined
     player?.dispose()
     doc.value = next
     await nextTick()
-    if (current === revision && root.value)
+    if (current === revision && root.value) {
+      activeRequest = requestId
       player = mountPageAnimations(root.value, next, mode, (state) => {
-        window.parent.postMessage({ type: 'scroll-studio:playback', ...state }, location.origin)
+        window.parent.postMessage(
+          { type: 'scroll-studio:playback', ...state, requestId },
+          location.origin,
+        )
       })
+    }
   } catch {
     /* Invalid messages never replace the active page. */
   }
@@ -36,9 +43,18 @@ function receive(event: MessageEvent<unknown>) {
   if (event.origin !== location.origin || event.source !== window.parent) return
   if (typeof event.data !== 'object' || event.data === null) return
   const data = event.data as Record<string, unknown>
-  if (data.type === 'scroll-studio:preview')
-    void render(data.document, data.mode === 'timeline' ? 'timeline' : 'scroll')
-  if (data.type === 'scroll-studio:transport') {
+  if (
+    data.type === 'scroll-studio:preview' &&
+    typeof data.requestId === 'number' &&
+    Number.isSafeInteger(data.requestId)
+  )
+    void render(data.document, data.mode === 'timeline' ? 'timeline' : 'scroll', data.requestId)
+  // Ignore controls and feedback belonging to a superseded preview render.
+  if (
+    data.type === 'scroll-studio:transport' &&
+    activeRequest !== undefined &&
+    data.requestId === activeRequest
+  ) {
     if (data.action === 'seek' && typeof data.time === 'number' && Number.isFinite(data.time))
       player?.seek(data.time)
     if (data.action === 'play') player?.play()
